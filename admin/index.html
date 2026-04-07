@@ -896,23 +896,14 @@
 <script>
 /* ────────────────────────────────────────
    ŞIFRE / LOGIN
+   Şifreyi değiştirmek için sadece aşağıdaki
+   ADMIN_PASSWORD satırını düzenle.
 ──────────────────────────────────────── */
-const DEFAULT_PASSWORD = 'L@gi1234!';
-
-function getStoredPassword() {
-  const stored = localStorage.getItem('blogAdminPass');
-  // localStorage'da yoksa varsayılan şifreyi kaydet
-  if (!stored) {
-    localStorage.setItem('blogAdminPass', btoa(DEFAULT_PASSWORD));
-    return DEFAULT_PASSWORD;
-  }
-  try { return atob(stored); } catch(e) { return DEFAULT_PASSWORD; }
-}
+const ADMIN_PASSWORD = 'L@gi1234!';
 
 function doLogin() {
-  const pw     = document.getElementById('loginPassword').value;
-  const stored = getStoredPassword();
-  if (pw === stored) {
+  const pw = document.getElementById('loginPassword').value;
+  if (pw === ADMIN_PASSWORD) {
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('app').classList.add('visible');
     loadConfig();
@@ -936,15 +927,7 @@ function doLogout() {
 }
 
 function changePassword() {
-  const p1 = document.getElementById('newPass1').value;
-  const p2 = document.getElementById('newPass2').value;
-  if (!p1)      return toast('Şifre boş olamaz', 'error');
-  if (p1 !== p2) return toast('Şifreler eşleşmiyor', 'error');
-  if (p1.length < 6) return toast('Şifre en az 6 karakter olmalı', 'error');
-  localStorage.setItem('blogAdminPass', btoa(p1));
-  document.getElementById('newPass1').value = '';
-  document.getElementById('newPass2').value = '';
-  toast('Şifre güncellendi ✓', 'success');
+  toast('Şifreyi değiştirmek için admin/index.html dosyasında ADMIN_PASSWORD satırını düzenle.', 'info');
 }
 
 /* ────────────────────────────────────────
