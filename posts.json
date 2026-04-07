@@ -1,0 +1,22 @@
+[
+  {
+    "id": "sql-injection-kavrami-ve-onleme",
+    "title": "SQL Injection: Temelden İleri Seviye Saldırı Analizi ve Önleme Teknikleri",
+    "date": "2026-04-05",
+    "category": "Web Security",
+    "url": "posts/sql-injection-kavrami-ve-onleme.html",
+    "excerpt": "SQL Injection, OWASP Top 10'un zirvesindeki yerini korumaya devam ediyor. Bu yazıda klasik, blind ve time-based SQLi saldırı tiplerini gerçek payload'larla inceliyor, WAF bypass yöntemlerine değiniyor ve prepared statements ile parametrik sorguların nasıl tam koruma sağladığını detaylı olarak açıklıyoruz.",
+    "tags": ["SQL Injection", "OWASP", "Web App Security", "Penetration Testing"],
+    "readingTime": "12 dk"
+  },
+  {
+    "id": "linux-privilege-escalation-teknikleri",
+    "title": "Linux Privilege Escalation: SUID, Cron Jobs ve Sudo Zafiyetleri",
+    "date": "2026-03-28",
+    "category": "Linux Security",
+    "url": "posts/linux-privilege-escalation-teknikleri.html",
+    "excerpt": "Bir sisteme düşük yetkili kullanıcı olarak erişim sağladıktan sonra ne yaparsınız? Bu yazı, CTF ve gerçek pentest senaryolarında sıkça karşılaşılan SUID bit istismarı, zayıf cron job yapılandırmaları ve yanlış sudo izinleri aracılığıyla root yetkisi elde etme yöntemlerini LinPEAS çıktıları eşliğinde ele alıyor.",
+    "tags": ["Linux", "Privilege Escalation", "SUID", "CTF", "Pentest"],
+    "readingTime": "15 dk"
+  }
+]

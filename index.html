@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="IT ve Siber Güvenlik üzerine teknik derinlikte yazılar; pentest, web güvenliği, Linux, CTF ve daha fazlası.">
+  <meta property="og:title" content="0xBlog — Siber Güvenlik & IT">
+  <meta property="og:description" content="Pentest, web güvenliği, Linux ve CTF üzerine teknik yazılar.">
+  <meta property="og:type" content="website">
+  <title>0xBlog — Siber Güvenlik & IT</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>">
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <nav class="nav-inner">
+      <a href="index.html" class="site-logo">
+        <span class="logo-bracket">[</span>
+        0xBlog
+        <span class="logo-bracket">]</span>
+        <span class="logo-cursor"></span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menüyü aç/kapat">&#9776;</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="index.html" class="active">Ana Sayfa</a></li>
+        <li><a href="#posts">Makaleler</a></li>
+        <li><a href="#about">Hakkında</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main class="page-wrapper">
+
+    <!-- Hero -->
+    <section class="hero">
+      <p class="hero-prompt"><span>root@0xblog</span>:~# whoami</p>
+      <h1>Siber Güvenlik &amp; IT<br><em>Teknik Blog</em></h1>
+      <p class="hero-desc">
+        Penetrasyon testi, web uygulama güvenliği, Linux sistem analizi, CTF write-up'ları
+        ve ağ güvenliği üzerine pratik odaklı, derinlemesine teknik yazılar.
+      </p>
+      <div class="hero-tags" id="categoryFilters">
+        <span class="tag active" data-cat="all">Tümü</span>
+        <!-- Kategoriler JS tarafından doldurulur -->
+      </div>
+    </section>
+
+    <!-- Posts -->
+    <section id="posts">
+      <div class="section-header">
+        <h2>Son Makaleler</h2>
+      </div>
+
+      <!-- İçerik JS tarafından render edilir -->
+      <div class="posts-grid" id="postsContainer">
+        <!-- Skeleton loaders -->
+        <div class="skeleton-card">
+          <div class="skeleton s-meta"></div>
+          <div class="skeleton s-title"></div>
+          <div class="skeleton s-desc"></div>
+          <div class="skeleton s-desc2"></div>
+        </div>
+        <div class="skeleton-card">
+          <div class="skeleton s-meta"></div>
+          <div class="skeleton s-title"></div>
+          <div class="skeleton s-desc"></div>
+          <div class="skeleton s-desc2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section id="about" style="margin-top:4rem; padding-top:2.5rem; border-top:1px solid var(--border);">
+      <div class="section-header">
+        <h2>Hakkında</h2>
+      </div>
+      <p style="color:var(--text-secondary);font-size:.9rem;max-width:640px;line-height:1.8;">
+        Bu blog, siber güvenlik alanında edindiğim deneyimleri ve araştırmaları paylaşmak amacıyla oluşturulmuştur.
+        Yazılar <strong style="color:var(--text-primary)">tamamen teknik ve uygulamalı</strong> içerik sunar;
+        sadece kavramsal açıklamalarla yetinmez, gerçek araçlar ve payload örnekleriyle desteklenir.
+      </p>
+      <div style="margin-top:1.2rem;display:flex;gap:.6rem;flex-wrap:wrap;">
+        <a href="https://github.com" target="_blank" rel="noopener" class="read-more">GitHub &rarr;</a>
+        <a href="https://tryhackme.com" target="_blank" rel="noopener" class="read-more">TryHackMe &rarr;</a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── FOOTER ── -->
+  <footer class="site-footer">
+    <span class="footer-symbol">_</span>
+    &copy; <span id="year"></span> 0xBlog &mdash; Tüm içerikler eğitim amaçlıdır.
+    Sorumlu kullanım esastır.
+  </footer>
+
+  <!-- ── VANILLA JS ── -->
+  <script>
+    /* ── Yıl ── */
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    /* ── Nav toggle (mobil) ── */
+    const navToggle = document.getElementById('navToggle');
+    const navLinks  = document.getElementById('navLinks');
+    navToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+    });
+
+    /* ── Tarih formatlama ── */
+    function formatDate(iso) {
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+    }
+
+    /* ── Kart HTML'i ── */
+    function renderCard(post) {
+      const tagsHtml = (post.tags || [])
+        .map(t => `<span class="tag">${escHtml(t)}</span>`)
+        .join('');
+
+      return `
+        <article class="post-card" data-category="${escHtml(post.category || '')}">
+          <div class="post-card-main">
+            <div class="post-meta">
+              <span class="post-date">${formatDate(post.date)}</span>
+              ${post.category ? `<span class="post-category">${escHtml(post.category)}</span>` : ''}
+              ${post.readingTime ? `<span class="post-date">${escHtml(post.readingTime)} okuma</span>` : ''}
+            </div>
+            <h2 class="post-title">
+              <a href="${escHtml(post.url)}">${escHtml(post.title)}</a>
+            </h2>
+            <p class="post-excerpt">${escHtml(post.excerpt)}</p>
+            <div class="hero-tags" style="margin-top:.7rem">${tagsHtml}</div>
+          </div>
+          <div class="post-card-aside">
+            <a href="${escHtml(post.url)}" class="read-more">Oku &rarr;</a>
+          </div>
+        </article>`;
+    }
+
+    /* ── XSS önleme ── */
+    function escHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* ── Kategori filtre butonları ── */
+    let allPosts = [];
+
+    function buildCategoryFilters(posts) {
+      const cats = [...new Set(posts.map(p => p.category).filter(Boolean))];
+      const container = document.getElementById('categoryFilters');
+      cats.forEach(cat => {
+        const btn = document.createElement('span');
+        btn.className = 'tag';
+        btn.dataset.cat = cat;
+        btn.textContent = cat;
+        container.appendChild(btn);
+      });
+
+      container.addEventListener('click', e => {
+        const btn = e.target.closest('[data-cat]');
+        if (!btn) return;
+        container.querySelectorAll('[data-cat]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filterPosts(btn.dataset.cat);
+      });
+    }
+
+    function filterPosts(cat) {
+      const container = document.getElementById('postsContainer');
+      const filtered = cat === 'all'
+        ? allPosts
+        : allPosts.filter(p => p.category === cat);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="state-message">Bu kategoride henüz makale yok.</div>`;
+        return;
+      }
+      container.innerHTML = filtered.map(renderCard).join('');
+    }
+
+    /* ── Ana fetch ── */
+    async function loadPosts() {
+      const container = document.getElementById('postsContainer');
+
+      try {
+        const res = await fetch('posts.json');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const posts = await res.json();
+
+        if (!Array.isArray(posts) || posts.length === 0) {
+          container.innerHTML = `<div class="state-message">Henüz makale yayınlanmamış. <span>Yakında...</span></div>`;
+          return;
+        }
+
+        /* Tarihe göre azalan sırala (en yeni üstte) */
+        allPosts = posts.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        buildCategoryFilters(allPosts);
+        container.innerHTML = allPosts.map(renderCard).join('');
+
+      } catch (err) {
+        console.error('posts.json yüklenemedi:', err);
+        container.innerHTML = `
+          <div class="state-message error">
+            Makaleler yüklenirken hata oluştu.<br>
+            <small style="opacity:.6">${escHtml(err.message)}</small>
+          </div>`;
+      }
+    }
+
+    loadPosts();
+  </script>
+</body>
+</html>
