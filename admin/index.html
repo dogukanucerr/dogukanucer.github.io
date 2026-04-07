@@ -898,20 +898,22 @@
 /* ────────────────────────────────────────
    ŞIFRE / LOGIN
 ──────────────────────────────────────── */
-const DEFAULT_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // admin123
+const DEFAULT_PASSWORD = 'admin123';
 
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256',
-    new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf))
-    .map(b => b.toString(16).padStart(2,'0')).join('');
+function getStoredPassword() {
+  const stored = localStorage.getItem('blogAdminPass');
+  // localStorage'da yoksa varsayılan şifreyi kaydet
+  if (!stored) {
+    localStorage.setItem('blogAdminPass', btoa(DEFAULT_PASSWORD));
+    return DEFAULT_PASSWORD;
+  }
+  try { return atob(stored); } catch(e) { return DEFAULT_PASSWORD; }
 }
 
-async function doLogin() {
-  const pw   = document.getElementById('loginPassword').value;
-  const hash = await sha256(pw);
-  const stored = localStorage.getItem('blogAdminHash') || DEFAULT_HASH;
-  if (hash === stored) {
+function doLogin() {
+  const pw     = document.getElementById('loginPassword').value;
+  const stored = getStoredPassword();
+  if (pw === stored) {
     document.getElementById('loginOverlay').classList.add('hidden');
     document.getElementById('app').classList.add('visible');
     loadConfig();
@@ -921,6 +923,7 @@ async function doLogin() {
   } else {
     document.getElementById('loginError').classList.add('show');
     document.getElementById('loginPassword').value = '';
+    document.getElementById('loginPassword').focus();
   }
 }
 
@@ -933,16 +936,16 @@ function doLogout() {
   location.reload();
 }
 
-async function changePassword() {
+function changePassword() {
   const p1 = document.getElementById('newPass1').value;
   const p2 = document.getElementById('newPass2').value;
-  if (!p1) return toast('Şifre boş olamaz', 'error');
+  if (!p1)      return toast('Şifre boş olamaz', 'error');
   if (p1 !== p2) return toast('Şifreler eşleşmiyor', 'error');
-  const hash = await sha256(p1);
-  localStorage.setItem('blogAdminHash', hash);
+  if (p1.length < 6) return toast('Şifre en az 6 karakter olmalı', 'error');
+  localStorage.setItem('blogAdminPass', btoa(p1));
   document.getElementById('newPass1').value = '';
   document.getElementById('newPass2').value = '';
-  toast('Şifre güncellendi', 'success');
+  toast('Şifre güncellendi ✓', 'success');
 }
 
 /* ────────────────────────────────────────
