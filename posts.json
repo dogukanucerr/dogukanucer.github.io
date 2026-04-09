@@ -1,19 +1,5 @@
 [
   {
-    "id": "deneme",
-    "title": "deneme",
-    "date": "2026-04-09",
-    "category": "Microsoft Security",
-    "url": "posts/deneme.html",
-    "excerpt": "Deneme",
-    "tags": [
-      "Deneme"
-    ],
-    "readingTime": "4",
-    "title_en": "deneme",
-    "excerpt_en": "deneme"
-  },
-  {
     "id": "sql-injection-kavrami-ve-onleme",
     "title": "SQL Injection: Temelden İleri Seviye Saldırı Analizi ve Önleme Teknikleri",
     "title_en": "SQL Injection: From Basics to Advanced Attack Analysis and Prevention",
