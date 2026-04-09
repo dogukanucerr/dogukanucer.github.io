@@ -1,5 +1,5 @@
 /* ============================================================
-   LANG.JS — 0xBlog Dil Motoru
+   LANG.JS — Dogukan Ucer Dil Motoru
    Tüm sayfalar tarafından ortak kullanılır.
    ============================================================ */
 

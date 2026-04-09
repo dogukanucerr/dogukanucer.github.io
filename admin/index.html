@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel — 0xBlog</title>
+  <title>Admin Panel — Dogukan Ucer</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap');
 
@@ -656,7 +656,7 @@
 <div id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">
-      <h1>[0xBlog]<span class="cursor"></span></h1>
+      <h1>[Dogukan Ucer]<span class="cursor"></span></h1>
       <p>Admin Panel — Giriş</p>
     </div>
     <div class="login-error" id="loginError">Hatalı şifre. Tekrar dene.</div>
@@ -679,7 +679,7 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-logo">
-      <span>[</span>0xBlog<span>]</span>
+      <span>[</span>Dogukan Ucer<span>]</span>
       &nbsp;Admin
     </div>
     <div class="topbar-right">
@@ -1028,11 +1028,11 @@ Image: toolbar button / drag-drop / Ctrl+V"></textarea>
           <div class="grid-2">
             <div class="form-group">
               <label><span>//</span> Blog Adı</label>
-              <input type="text" id="cfgSiteName" placeholder="0xBlog">
+              <input type="text" id="cfgSiteName" placeholder="Dogukan Ucer">
             </div>
             <div class="form-group">
               <label><span>//</span> Yazar Adı</label>
-              <input type="text" id="cfgAuthorName" placeholder="0xBlog Yazarı">
+              <input type="text" id="cfgAuthorName" placeholder="Dogukan Ucer">
             </div>
           </div>
           <button class="btn btn-primary" onclick="saveSiteConfig()">Kaydet</button>
@@ -1111,8 +1111,8 @@ function loadConfig() {
   document.getElementById('cfgRepo').value   = localStorage.getItem('ghRepo')   || '';
   document.getElementById('cfgBranch').value = localStorage.getItem('ghBranch') || 'main';
 
-  const siteName   = localStorage.getItem('siteName')   || '0xBlog';
-  const authorName = localStorage.getItem('authorName') || '0xBlog Yazarı';
+  const siteName   = localStorage.getItem('siteName')   || 'Dogukan Ucer';
+  const authorName = localStorage.getItem('authorName') || 'Dogukan Ucer';
   document.getElementById('cfgSiteName').value   = siteName;
   document.getElementById('cfgAuthorName').value = authorName;
 
@@ -1549,7 +1549,7 @@ document.addEventListener('DOMContentLoaded', initDragDrop);
 ──────────────────────────────────────── */
 function buildArticleHTML(data) {
   const { title, titleEn, slug, date, category, tags, readingTime, content, contentEn } = data;
-  const siteName   = localStorage.getItem('siteName')   || '0xBlog';
+  const siteName   = localStorage.getItem('siteName')   || 'Dogukan Ucer';
   const authorName = localStorage.getItem('authorName') || `${siteName} Yazarı`;
   const tagsHtml   = tags.map(t => `<span class="tag active">${escH(t.trim())}</span>`).join('\n        ');
   const dateStr    = new Date(date + 'T00:00:00').toLocaleDateString('tr-TR', { day:'2-digit', month:'long', year:'numeric' });
