@@ -11,10 +11,10 @@ const BLOG_I18N = {
     nav_about:       'Hakkında',
 
     /* Hero (index) */
-    hero_prompt:     'root@0xblog:~# whoami',
+    hero_prompt:     'PS C:\EnterpriseAdmin> Get-SecurityAlert',
     hero_title_line1:'Siber Güvenlik &amp; IT',
     hero_title_em:   'Teknik Blog',
-    hero_desc:       'Penetrasyon testi, web uygulama güvenliği, Linux sistem analizi, CTF write-up\'ları ve ağ güvenliği üzerine pratik odaklı, derinlemesine teknik yazılar.',
+    hero_desc:       'Kurumsal güvenlik mimarileri, Microsoft ve Trend Micro ürün aileleri ile defansif stratejiler, uç nokta (endpoint) güvenliği ve sistem yönetimi üzerine derinlemesine teknik yazılar ile sizleri baş başa bırakıyorum — keyifli okumalar.',
 
     /* Sections */
     section_latest:  'Son Makaleler',
@@ -52,7 +52,7 @@ const BLOG_I18N = {
     nav_about:       'About',
 
     /* Hero */
-    hero_prompt:     'root@0xblog:~# whoami',
+    hero_prompt:     'PS C:\EnterpriseAdmin> Get-SecurityAlert',
     hero_title_line1:'Cybersecurity &amp; IT',
     hero_title_em:   'Technical Blog',
     hero_desc:       'In-depth technical articles on penetration testing, web application security, Linux system analysis, CTF write-ups and network security.',
