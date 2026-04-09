@@ -1078,7 +1078,7 @@ document.getElementById('loginPassword').addEventListener('keydown', e => {
 });
 
 function doLogout() {
-  sessionStorage.removeItem('ghToken');
+  localStorage.removeItem('ghToken');
   location.reload();
 }
 
@@ -1100,7 +1100,7 @@ function saveConfig() {
   localStorage.setItem('ghOwner',  owner);
   localStorage.setItem('ghRepo',   repo);
   localStorage.setItem('ghBranch', branch);
-  if (token) sessionStorage.setItem('ghToken', token);
+  if (token) localStorage.setItem('ghToken', token);
 
   updateRepoLabel();
   toast('Ayarlar kaydedildi', 'success');
@@ -1110,6 +1110,7 @@ function loadConfig() {
   document.getElementById('cfgOwner').value  = localStorage.getItem('ghOwner')  || '';
   document.getElementById('cfgRepo').value   = localStorage.getItem('ghRepo')   || '';
   document.getElementById('cfgBranch').value = localStorage.getItem('ghBranch') || 'main';
+  document.getElementById('cfgToken').value  = localStorage.getItem('ghToken')  || '';
 
   const siteName   = localStorage.getItem('siteName')   || 'Dogukan Ucer';
   const authorName = localStorage.getItem('authorName') || 'Dogukan Ucer';
@@ -1137,7 +1138,7 @@ function ghCfg() {
     owner:  localStorage.getItem('ghOwner')  || '',
     repo:   localStorage.getItem('ghRepo')   || '',
     branch: localStorage.getItem('ghBranch') || 'main',
-    token:  sessionStorage.getItem('ghToken') || ''
+    token:  localStorage.getItem('ghToken') || ''
   };
 }
 
