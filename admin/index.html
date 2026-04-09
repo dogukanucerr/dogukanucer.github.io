@@ -412,6 +412,39 @@
       color: var(--t3);
     }
 
+    /* ── CONTENTEDITABLE EDITOR ── */
+    .ce-editor {
+      width: 100%;
+      min-height: 320px;
+      background: var(--code-bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: .6rem .8rem;
+      font-family: var(--font);
+      font-size: .82rem;
+      color: var(--t1);
+      line-height: 1.7;
+      outline: none;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ce-editor:focus { border-color: var(--green); box-shadow: 0 0 0 2px rgba(0,255,65,.08); }
+    .ce-editor:empty::before {
+      content: attr(data-placeholder);
+      color: var(--t3);
+      pointer-events: none;
+    }
+    /* Görseller editör içinde görünsün */
+    .ce-editor img { max-width: 100%; border-radius: var(--r); margin: .5rem 0; display: block; }
+    .ce-editor .screenshot-wrapper { margin: .8rem 0; }
+    .ce-editor h2 { color: var(--green); font-size: 1rem; margin: .8rem 0 .3rem; }
+    .ce-editor h3 { color: var(--cyan); font-size: .9rem; margin: .6rem 0 .2rem; }
+    .ce-editor p  { margin: .4rem 0; }
+    .ce-editor code { background: #1a1a1a; padding: .1em .3em; border-radius: 3px; font-size: .8rem; }
+    .ce-editor strong { color: var(--t1); }
+    .ce-editor ul, .ce-editor ol { padding-left: 1.4rem; margin: .4rem 0; }
+
     /* ── DRAG OVERLAY ── */
     .editor-wrap { position: relative; }
     .drag-overlay {
@@ -922,16 +955,14 @@
               <span>&#128247; Görseli bırak</span>
               <small>İmleç konumuna eklenecek</small>
             </div>
-            <textarea id="contentEditor"
-              placeholder="Türkçe içeriği buraya yazın veya yapıştırın...
-Görsel: toolbar butonu / sürükle-bırak / Ctrl+V"></textarea>
+            <div id="contentEditor" contenteditable="true" class="ce-editor"
+                 data-placeholder="Türkçe içeriği buraya yazın... Görsel için Panodan Yapıştır butonunu kullanın."></div>
           </div>
 
           <!-- EN Editör -->
           <div class="editor-wrap" id="editorWrapEN" style="display:none">
-            <textarea id="contentEditorEn"
-              placeholder="Write or paste English content here...
-Image: toolbar button / drag-drop / Ctrl+V"></textarea>
+            <div id="contentEditorEn" contenteditable="true" class="ce-editor"
+                 data-placeholder="Write English content here... Use Paste from Clipboard button for images."></div>
           </div>
 
           <div class="preview-frame" id="previewFrame"></div>
@@ -1524,12 +1555,10 @@ function activeEditor() {
 }
 
 function ins(type) {
-  const ta = activeEditor();
+  const el = activeEditor();
   const snippet = SNIPPETS[type] || '';
-  const start = ta.selectionStart, end = ta.selectionEnd;
-  ta.value = ta.value.substring(0, start) + snippet + ta.value.substring(end);
-  ta.focus();
-  ta.selectionStart = ta.selectionEnd = start + snippet.length;
+  el.focus();
+  document.execCommand('insertHTML', false, snippet);
 }
 
 function switchContentLang(lang, btn) {
@@ -1554,8 +1583,8 @@ function switchTab(tab, btn) {
     document.getElementById('editorWrapTR').style.display = 'none';
     document.getElementById('editorWrapEN').style.display = 'none';
     toolbar.style.display = 'none';
-    const trContent = document.getElementById('contentEditor').value;
-    const enContent = document.getElementById('contentEditorEn').value;
+    const trContent = document.getElementById('contentEditor').innerHTML;
+    const enContent = document.getElementById('contentEditorEn').innerHTML;
     preview.innerHTML = `
       <p style="color:var(--green);font-size:.75rem;margin-bottom:.8rem">▶ TR</p>
       ${trContent || '<p style="color:#555">TR içerik yok.</p>'}
@@ -1644,18 +1673,16 @@ function buildScreenshotSnippet(src, caption, barText) {
 </div>\n`;
 }
 
-/* İmleç konumuna metin ekle — ta parametresi verilmezse aktif editörü kullanır */
-function insAtCursor(text, ta) {
-  if (!ta) {
+/* İmleç konumuna HTML ekle — contenteditable div için */
+function insAtCursor(html, el) {
+  if (!el) {
     const enWrap = document.getElementById('editorWrapEN');
-    ta = (enWrap && enWrap.style.display !== 'none')
+    el = (enWrap && enWrap.style.display !== 'none')
       ? document.getElementById('contentEditorEn')
       : document.getElementById('contentEditor');
   }
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  ta.value = ta.value.substring(0, s) + text + ta.value.substring(e);
-  ta.focus();
-  ta.selectionStart = ta.selectionEnd = s + text.length;
+  el.focus();
+  document.execCommand('insertHTML', false, html);
 }
 
 /* ────────────────────────────────────────
@@ -1666,29 +1693,18 @@ function insAtCursor(text, ta) {
 window.editorImages   = {};   /* { img001: 'data:image/png;base64,...' } */
 window.editorImgCount = 0;
 
-function storeAndInsertImage(dataUri, caption, targetTA) {
-  const id  = 'img' + String(++window.editorImgCount).padStart(3,'0');
-  window.editorImages[id] = dataUri;
+/* Görseli doğrudan editöre ekle — artık placeholder yok, görsel anında görünür */
+function storeAndInsertImage(dataUri, caption, targetEl) {
   const cap = caption || 'Ekran görüntüsü';
-  /* Editöre sadece kısa placeholder gir */
-  insAtCursor(`[IMG:${id}:${cap}]`, targetTA);
-  toast('Görsel eklendi — [' + id + ']', 'success');
+  const html = buildScreenshotSnippet(dataUri, cap, '');
+  insAtCursor(html, targetEl);
+  toast('Görsel eklendi', 'success');
 }
 
-/* Placeholder'ları gerçek HTML'e çevir (yayınlamadan önce çağrılır) */
-function expandImgPlaceholders(content) {
-  return content.replace(/\[IMG:([a-z0-9]+):([^\]]*)\]/g, (_, id, cap) => {
-    const src = window.editorImages[id];
-    if (!src) return '';   /* görsel silinmişse boş bırak */
-    return buildScreenshotSnippet(src, cap, '');
-  });
-}
+/* Artık placeholder sistemi yok, bu fonksiyon içeriği olduğu gibi döndürür */
+function expandImgPlaceholders(content) { return content || ''; }
 
-/* Form temizlenince görsel deposunu da sıfırla */
-function resetImageStore() {
-  window.editorImages   = {};
-  window.editorImgCount = 0;
-}
+function resetImageStore() { /* artık gerek yok */ }
 
 /* ────────────────────────────────────────
    PANODAN GÖRSEL YAPISTIR (Modern Clipboard API)
@@ -1741,9 +1757,8 @@ async function pasteImageFromClipboard() {
    SÜRÜKLE-BIRAK (editör üzerine)
 ──────────────────────────────────────── */
 function initDragDrop() {
-  const wrap    = document.getElementById('editorWrap');
+  const wrap    = document.getElementById('editorWrapTR');
   const overlay = document.getElementById('dragOverlay');
-  const ta      = document.getElementById('contentEditor');
 
   wrap.addEventListener('dragenter', e => {
     if (e.dataTransfer.types.includes('Files')) overlay.classList.add('show');
@@ -1789,18 +1804,9 @@ function initDragDrop() {
     reader.readAsDataURL(imageFile);
   }
 
-  /* Textarea üzerinde odak varken */
-  ta.addEventListener('paste', handlePasteImage);
-
-  /* Odak DIŞINDAYKEN — Yeni Makale view'i açıksa çalışır */
-  document.addEventListener('paste', e => {
-    const view = document.getElementById('view-newArticle');
-    if (!view || !view.classList.contains('active')) return;
-    const active = document.activeElement;
-    /* Metin alanına yazıyorsa müdahale etme */
-    if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
-    handlePasteImage(e);
-  });
+  /* Contenteditable editörler üzerinde paste — görsel varsa yakala */
+  document.getElementById('contentEditor').addEventListener('paste', handlePasteImage);
+  document.getElementById('contentEditorEn').addEventListener('paste', handlePasteImage);
 
   /* Modal drop zone */
   const dz = document.getElementById('modalDropZone');
@@ -1949,8 +1955,8 @@ async function publishArticle() {
   const tagsRaw     = document.getElementById('artTags').value.trim();
   const excerpt     = document.getElementById('artExcerpt').value.trim();
   const excerptEn   = document.getElementById('artExcerptEn').value.trim();
-  const content     = document.getElementById('contentEditor').value.trim();
-  const contentEn   = document.getElementById('contentEditorEn').value.trim();
+  const content     = document.getElementById('contentEditor').innerHTML.trim();
+  const contentEn   = document.getElementById('contentEditorEn').innerHTML.trim();
 
   if (!title)    return toast('Başlık zorunlu', 'error');
   if (!category) {
@@ -2040,7 +2046,8 @@ async function publishArticle() {
       document.getElementById('artCategory').value  = '';
       document.getElementById('artTags').value      = '';
       document.getElementById('artExcerpt').value   = '';
-      document.getElementById('contentEditor').value = '';
+      document.getElementById('contentEditor').innerHTML = '';
+      document.getElementById('contentEditorEn').innerHTML = '';
       document.getElementById('slugPreview').textContent = 'otomatik-olusturulur';
       setTodayDate();
       resetCatSelector();
