@@ -412,23 +412,115 @@
       color: var(--t3);
     }
 
-    /* ── IMAGE HELPER ── */
-    .img-helper {
-      background: var(--bg4);
-      border: 1px dashed var(--border2);
+    /* ── DRAG OVERLAY ── */
+    .editor-wrap { position: relative; }
+    .drag-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(0,255,65,.07);
+      border: 2px dashed var(--green);
       border-radius: var(--r);
-      padding: 1rem 1.2rem;
-      margin-top: .6rem;
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: .5rem;
+      pointer-events: none;
     }
-    .img-helper p { font-size: .78rem; color: var(--t3); margin-bottom: .5rem; }
-    .img-helper .path-row {
+    .drag-overlay.show { display: flex; }
+    .drag-overlay span { color: var(--green); font-size: .9rem; letter-spacing: .05em; }
+    .drag-overlay small { color: var(--t3); font-size: .75rem; }
+
+    /* ── SCREENSHOT MODAL ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--r);
+      padding: 1.8rem;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.8);
+    }
+    .modal h3 {
+      font-size: .85rem;
+      color: #fff;
+      margin-bottom: 1.2rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal h3::before { content: '> '; color: var(--green); }
+    .modal-tabs {
+      display: flex;
+      gap: .4rem;
+      margin-bottom: 1.1rem;
+    }
+    .modal-tab {
+      flex: 1;
+      padding: .4rem;
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--t3);
+      font-family: var(--font);
+      font-size: .75rem;
+      border-radius: var(--r);
+      cursor: pointer;
+      transition: all .12s;
+    }
+    .modal-tab.active {
+      border-color: var(--green);
+      color: var(--green);
+      background: rgba(0,255,65,.06);
+    }
+    .modal-panel { display: none; }
+    .modal-panel.show { display: block; }
+    .drop-zone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--r);
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .15s;
+      margin-bottom: .8rem;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--green);
+      background: rgba(0,255,65,.04);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-zone-icon { font-size: 2rem; opacity: .4; display: block; margin-bottom: .5rem; }
+    .drop-zone p { font-size: .8rem; color: var(--t3); }
+    .drop-zone p span { color: var(--green); }
+    .drop-preview {
+      display: none;
+      width: 100%;
+      max-height: 160px;
+      object-fit: contain;
+      border-radius: var(--r);
+      border: 1px solid var(--border2);
+      margin-bottom: .8rem;
+    }
+    .drop-preview.show { display: block; }
+    .modal-actions {
       display: flex;
       gap: .5rem;
-      align-items: center;
-      flex-wrap: wrap;
+      justify-content: flex-end;
+      margin-top: 1.2rem;
     }
-    .img-helper input { flex: 1; min-width: 0; }
-    .img-helper small { font-size: .72rem; color: var(--t3); display: block; margin-top: .4rem; }
 
     /* ── ARTICLE LIST ── */
     .article-row {
@@ -679,7 +771,7 @@
         <div class="page-header">
           <div>
             <h2>Yeni Makale</h2>
-            <p>Formu doldur, içeriğini yapıştır, yayınla</p>
+            <p>Formu doldur → içerik yaz → görsel ekle → yayınla</p>
           </div>
           <button class="btn btn-primary" id="publishBtn" onclick="publishArticle()">
             &#9654; Yayınla
@@ -691,26 +783,24 @@
           <div class="card-title"><span>#</span> Makale Bilgileri</div>
           <div class="grid-2">
             <div class="form-group">
-              <label><span>//</span> Başlık</label>
-              <input type="text" id="artTitle" placeholder="Makale başlığı..."
-                     oninput="autoSlug()">
-              <div class="slug-preview">
-                URL: posts/<span id="slugPreview">otomatik-olusturulur</span>.html
-              </div>
+              <label><span>//</span> Başlık — TR</label>
+              <input type="text" id="artTitle" placeholder="Makale başlığı (Türkçe)..." oninput="autoSlug()">
+              <div class="slug-preview">URL: posts/<span id="slugPreview">otomatik-olusturulur</span>.html</div>
             </div>
             <div class="form-group">
+              <label><span>//</span> Başlık — EN</label>
+              <input type="text" id="artTitleEn" placeholder="Article title (English)...">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
               <label><span>//</span> Kategori</label>
-              <input type="text" id="artCategory" placeholder="Web Security, Linux Security..."
-                     list="catSuggestions">
+              <input type="text" id="artCategory" placeholder="Web Security, Linux Security..." list="catSuggestions">
               <datalist id="catSuggestions">
-                <option value="Web Security">
-                <option value="Linux Security">
-                <option value="Network Security">
-                <option value="Malware Analysis">
-                <option value="CTF Write-up">
-                <option value="Forensics">
-                <option value="OSINT">
-                <option value="Cryptography">
+                <option value="Web Security"><option value="Linux Security">
+                <option value="Network Security"><option value="Malware Analysis">
+                <option value="CTF Write-up"><option value="Forensics">
+                <option value="OSINT"><option value="Cryptography">
               </datalist>
             </div>
           </div>
@@ -721,29 +811,43 @@
             </div>
             <div class="form-group">
               <label><span>//</span> Okuma Süresi</label>
-              <input type="text" id="artReadingTime" placeholder="8 dk" style="width:100%">
+              <input type="text" id="artReadingTime" placeholder="8 dk">
             </div>
           </div>
           <div class="form-group">
             <label><span>//</span> Etiketler <small style="color:var(--t3)">(virgülle ayır)</small></label>
             <input type="text" id="artTags" placeholder="Nmap, Network, Recon, Pentest">
           </div>
-          <div class="form-group">
-            <label><span>//</span> Kısa Açıklama <small style="color:var(--t3)">(ana sayfada görünür)</small></label>
-            <textarea id="artExcerpt" rows="2" placeholder="Makale hakkında 1-2 cümle..."></textarea>
+          <div class="grid-2">
+            <div class="form-group">
+              <label><span>//</span> Kısa Açıklama — TR <small style="color:var(--t3)">(ana sayfada TR)</small></label>
+              <textarea id="artExcerpt" rows="2" placeholder="Makale hakkında 1-2 cümle (Türkçe)..."></textarea>
+            </div>
+            <div class="form-group">
+              <label><span>//</span> Kısa Açıklama — EN <small style="color:var(--t3)">(ana sayfada EN)</small></label>
+              <textarea id="artExcerptEn" rows="2" placeholder="1-2 sentences about the article (English)..."></textarea>
+            </div>
           </div>
         </div>
 
         <!-- İçerik Editörü -->
         <div class="card">
-          <div class="card-title"><span>#</span> Makale İçeriği</div>
-
-          <div class="preview-toggle">
-            <button class="prev-tab active" onclick="switchTab('editor',this)">HTML Editör</button>
-            <button class="prev-tab" onclick="switchTab('preview',this)">Önizleme</button>
+          <div class="card-title">
+            <span>#</span> Makale İçeriği
+            <span style="color:var(--t3);font-size:.7rem;margin-left:.8rem;font-weight:400">
+              Görsel: toolbar · sürükle-bırak · Ctrl+V
+            </span>
           </div>
 
-          <!-- Toolbar -->
+          <!-- Dil / Önizleme sekmeleri -->
+          <div style="display:flex;gap:.4rem;margin-bottom:.8rem;flex-wrap:wrap">
+            <button class="prev-tab active" id="tabTR"    onclick="switchContentLang('tr',this)">&#128221; TR İçerik</button>
+            <button class="prev-tab"        id="tabEN"    onclick="switchContentLang('en',this)">&#127881; EN Content</button>
+            <div style="flex:1"></div>
+            <button class="prev-tab" id="tabPreview" onclick="switchTab('preview',this)">&#128065; Önizleme</button>
+          </div>
+
+          <!-- Toolbar (her iki editörde de çalışır) -->
           <div class="editor-toolbar" id="editorToolbarWrap">
             <button class="tb-btn" onclick="ins('para')">¶ Paragraf</button>
             <button class="tb-btn" onclick="ins('h2')">H2 Başlık</button>
@@ -757,40 +861,92 @@
             <button class="tb-btn" onclick="ins('code-inline')">` Kod</button>
             <button class="tb-btn" onclick="ins('code-block')">{ } Kod Bloğu</button>
             <div class="tb-sep"></div>
-            <button class="tb-btn" onclick="ins('info')">ℹ️ Bilgi</button>
-            <button class="tb-btn" onclick="ins('warn')">⚠️ Uyarı</button>
-            <button class="tb-btn" onclick="ins('danger')">🚨 Tehlike</button>
+            <button class="tb-btn" onclick="ins('info')">ℹ Bilgi</button>
+            <button class="tb-btn" onclick="ins('warn')">⚠ Uyarı</button>
+            <button class="tb-btn" onclick="ins('danger')">! Tehlike</button>
             <div class="tb-sep"></div>
-            <button class="tb-btn" onclick="ins('screenshot')">🖼 Ekran Görüntüsü</button>
+            <button class="tb-btn" style="color:var(--cyan);border-color:rgba(0,212,255,.2)"
+                    onclick="openImgModal()">&#128247; Görsel Ekle</button>
             <button class="tb-btn" onclick="ins('table')">⊞ Tablo</button>
             <button class="tb-btn" onclick="ins('blockquote')">❝ Alıntı</button>
           </div>
 
-          <textarea id="contentEditor" placeholder="İçeriğinizi buraya yazın veya yapıştırın...&#10;&#10;Word/Notion'dan kopyaladığınız düz metin için → araç çubuğundaki butonları kullanabilirsiniz.&#10;HTML bilen biri olarak doğrudan HTML yazabilirsiniz."></textarea>
+          <!-- TR Editör -->
+          <div class="editor-wrap" id="editorWrapTR">
+            <div class="drag-overlay" id="dragOverlay">
+              <span>&#128247; Görseli bırak</span>
+              <small>İmleç konumuna eklenecek</small>
+            </div>
+            <textarea id="contentEditor"
+              placeholder="Türkçe içeriği buraya yazın veya yapıştırın...
+Görsel: toolbar butonu / sürükle-bırak / Ctrl+V"></textarea>
+          </div>
+
+          <!-- EN Editör -->
+          <div class="editor-wrap" id="editorWrapEN" style="display:none">
+            <textarea id="contentEditorEn"
+              placeholder="Write or paste English content here...
+Image: toolbar button / drag-drop / Ctrl+V"></textarea>
+          </div>
 
           <div class="preview-frame" id="previewFrame"></div>
         </div>
 
-        <!-- Ekran Görüntüsü Yardımcısı -->
-        <div class="card">
-          <div class="card-title"><span>#</span> Ekran Görüntüsü Ekle</div>
-          <p style="font-size:.8rem;color:var(--t2);margin-bottom:.8rem">
-            Görselini <code style="color:var(--green)">assets/</code> klasörüne koy, aşağıya dosya adını yaz,
-            butona bas — hazır kodu editöre ekle.
-          </p>
-          <div class="img-helper">
-            <p>Dosya adı (assets/ klasöründe):</p>
-            <div class="path-row">
-              <input type="text" id="imgFile" placeholder="ornek-screenshot.png" style="flex:1">
-              <input type="text" id="imgCaption" placeholder="Alt yazı açıklaması..." style="flex:1.5">
-              <button class="btn btn-secondary btn-sm" onclick="insertScreenshot()">Editöre Ekle</button>
-            </div>
-            <small>Görsel dosyasını bilgisayarınızdan assets/ klasörüne manuel olarak taşıyın, ardından GitHub'a push edin.</small>
-          </div>
-        </div>
-
         <!-- Yayın Durumu -->
         <div id="publishStatus"></div>
+      </div>
+
+      <!-- ── GÖRSEL EKLEME MODALI ── -->
+      <div class="modal-backdrop" id="imgModal" onclick="closeImgModalOutside(event)">
+        <div class="modal">
+          <h3>Görsel Ekle</h3>
+
+          <div class="modal-tabs">
+            <button class="modal-tab active" onclick="switchModalTab('upload', this)">Dosya Yükle / Sürükle</button>
+            <button class="modal-tab" onclick="switchModalTab('path', this)">Dosya Yolu</button>
+          </div>
+
+          <!-- Panel 1: Dosya yükle -->
+          <div class="modal-panel show" id="mpUpload">
+            <div class="drop-zone" id="modalDropZone">
+              <input type="file" id="modalFileInput" accept="image/*" onchange="handleModalFile(this.files[0])">
+              <span class="drop-zone-icon">&#128247;</span>
+              <p>Görseli buraya sürükle veya <span>tıkla seç</span></p>
+            </div>
+            <img id="dropPreview" class="drop-preview" alt="önizleme">
+            <div class="form-group">
+              <label><span>//</span> Alt Yazı (isteğe bağlı)</label>
+              <input type="text" id="modalCaption1" placeholder="Ekran görüntüsü açıklaması...">
+            </div>
+            <p style="font-size:.72rem;color:var(--t3);margin-top:.3rem">
+              Görsel doğrudan HTML içine gömülür (base64). Ayrıca assets/ klasörüne taşımanız gerekmez.
+            </p>
+          </div>
+
+          <!-- Panel 2: Dosya yolu -->
+          <div class="modal-panel" id="mpPath">
+            <div class="form-group">
+              <label><span>//</span> Dosya adı (assets/ klasöründe)</label>
+              <input type="text" id="modalFilePath" placeholder="ornek-screenshot.png">
+            </div>
+            <div class="form-group">
+              <label><span>//</span> Alt Yazı (isteğe bağlı)</label>
+              <input type="text" id="modalCaption2" placeholder="Ekran görüntüsü açıklaması...">
+            </div>
+            <div class="form-group">
+              <label><span>//</span> Başlık Çubuğu Metni (isteğe bağlı)</label>
+              <input type="text" id="modalBarText" placeholder="terminal — nmap çıktısı">
+            </div>
+            <p style="font-size:.72rem;color:var(--t3)">
+              Görsel dosyasını <code style="color:var(--green)">assets/</code> klasörüne koyup GitHub'a push edin.
+            </p>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeImgModal()">İptal</button>
+            <button class="btn btn-primary" onclick="confirmInsertImg()">&#10003; İmleç Konumuna Ekle</button>
+          </div>
+        </div>
       </div>
 
       <!-- ── MAKALELERİ LİSTELE ── -->
@@ -1174,18 +1330,6 @@ const SNIPPETS = {
   danger:`<div class="danger-box">
   <strong>&#128680; Kritik:</strong> Tehlike metni buraya...
 </div>\n`,
-  screenshot:`<div class="screenshot-wrapper">
-  <div class="screenshot-bar">
-    <div class="code-block-dots">
-      <span class="dot-red"></span>
-      <span class="dot-yellow"></span>
-      <span class="dot-green"></span>
-    </div>
-    <span class="screenshot-url">terminal — açıklama</span>
-  </div>
-  <img src="../assets/DOSYA.png" alt="Açıklama">
-  <p class="screenshot-caption">Ekran görüntüsü açıklaması.</p>
-</div>\n`,
   table:`<table>
   <thead>
     <tr><th>Sütun 1</th><th>Sütun 2</th><th>Sütun 3</th></tr>
@@ -1199,65 +1343,218 @@ const SNIPPETS = {
 </blockquote>\n`
 };
 
+/* Aktif içerik editörünü döndür */
+let _activeContentLang = 'tr';
+function activeEditor() {
+  return document.getElementById(
+    _activeContentLang === 'en' ? 'contentEditorEn' : 'contentEditor'
+  );
+}
+
 function ins(type) {
-  const ta = document.getElementById('contentEditor');
+  const ta = activeEditor();
   const snippet = SNIPPETS[type] || '';
-  const start = ta.selectionStart;
-  const end   = ta.selectionEnd;
+  const start = ta.selectionStart, end = ta.selectionEnd;
   ta.value = ta.value.substring(0, start) + snippet + ta.value.substring(end);
   ta.focus();
   ta.selectionStart = ta.selectionEnd = start + snippet.length;
 }
 
+function switchContentLang(lang, btn) {
+  _activeContentLang = lang;
+  document.querySelectorAll('.prev-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('editorWrapTR').style.display = lang === 'tr' ? '' : 'none';
+  document.getElementById('editorWrapEN').style.display = lang === 'en' ? '' : 'none';
+  document.getElementById('editorToolbarWrap').style.display = 'flex';
+  document.getElementById('previewFrame').classList.remove('show');
+}
+
 function switchTab(tab, btn) {
   document.querySelectorAll('.prev-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  const editor  = document.getElementById('contentEditor');
   const toolbar = document.getElementById('editorToolbarWrap');
   const preview = document.getElementById('previewFrame');
   if (tab === 'editor') {
-    editor.style.display  = 'block';
-    toolbar.style.display = 'flex';
-    preview.classList.remove('show');
+    switchContentLang(_activeContentLang,
+      document.getElementById(_activeContentLang === 'en' ? 'tabEN' : 'tabTR'));
   } else {
-    editor.style.display  = 'none';
+    document.getElementById('editorWrapTR').style.display = 'none';
+    document.getElementById('editorWrapEN').style.display = 'none';
     toolbar.style.display = 'none';
-    preview.innerHTML     = document.getElementById('contentEditor').value || '<p style="color:#555">İçerik yok.</p>';
+    const trContent = document.getElementById('contentEditor').value;
+    const enContent = document.getElementById('contentEditorEn').value;
+    preview.innerHTML = `
+      <p style="color:var(--green);font-size:.75rem;margin-bottom:.8rem">▶ TR</p>
+      ${trContent || '<p style="color:#555">TR içerik yok.</p>'}
+      <hr style="border-color:var(--border);margin:1.5rem 0">
+      <p style="color:var(--cyan);font-size:.75rem;margin-bottom:.8rem">▶ EN</p>
+      ${enContent || '<p style="color:#555">EN content empty.</p>'}`;
     preview.classList.add('show');
   }
 }
 
-function insertScreenshot() {
-  const file    = document.getElementById('imgFile').value.trim();
-  const caption = document.getElementById('imgCaption').value.trim();
-  if (!file) return toast('Dosya adı gir', 'error');
-  const snippet = `<div class="screenshot-wrapper">
+/* ────────────────────────────────────────
+   GÖRSEL MODAL
+──────────────────────────────────────── */
+let _pendingBase64 = null; // sürükle/seç ile yüklenen görsel
+
+function openImgModal() {
+  _pendingBase64 = null;
+  document.getElementById('dropPreview').className = 'drop-preview';
+  document.getElementById('dropPreview').src = '';
+  document.getElementById('modalCaption1').value = '';
+  document.getElementById('modalCaption2').value = '';
+  document.getElementById('modalFilePath').value = '';
+  document.getElementById('modalBarText').value  = '';
+  document.getElementById('modalFileInput').value = '';
+  document.getElementById('imgModal').classList.add('show');
+}
+
+function closeImgModal() {
+  document.getElementById('imgModal').classList.remove('show');
+}
+function closeImgModalOutside(e) {
+  if (e.target === document.getElementById('imgModal')) closeImgModal();
+}
+
+function switchModalTab(tab, btn) {
+  document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.modal-panel').forEach(p => p.classList.remove('show'));
+  btn.classList.add('active');
+  document.getElementById(tab === 'upload' ? 'mpUpload' : 'mpPath').classList.add('show');
+}
+
+function handleModalFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _pendingBase64 = e.target.result; // data:image/png;base64,...
+    const prev = document.getElementById('dropPreview');
+    prev.src = _pendingBase64;
+    prev.classList.add('show');
+  };
+  reader.readAsDataURL(file);
+}
+
+function confirmInsertImg() {
+  const activePanel = document.querySelector('.modal-panel.show');
+  let snippet = '';
+
+  if (activePanel.id === 'mpUpload') {
+    if (!_pendingBase64) return toast('Önce bir görsel seç veya sürükle', 'error');
+    const caption = document.getElementById('modalCaption1').value.trim();
+    snippet = buildScreenshotSnippet(_pendingBase64, caption, '');
+  } else {
+    const filePath = document.getElementById('modalFilePath').value.trim();
+    if (!filePath) return toast('Dosya adı gir', 'error');
+    const caption  = document.getElementById('modalCaption2').value.trim();
+    const barText  = document.getElementById('modalBarText').value.trim() || filePath;
+    snippet = buildScreenshotSnippet(`../assets/${filePath}`, caption, barText);
+  }
+
+  insAtCursor(snippet);
+  closeImgModal();
+  toast('Görsel eklendi', 'success');
+}
+
+function buildScreenshotSnippet(src, caption, barText) {
+  return `\n<div class="screenshot-wrapper">
   <div class="screenshot-bar">
     <div class="code-block-dots">
       <span class="dot-red"></span>
       <span class="dot-yellow"></span>
       <span class="dot-green"></span>
     </div>
-    <span class="screenshot-url">${escH(file)}</span>
+    <span class="screenshot-url">${escH(barText)}</span>
   </div>
-  <img src="../assets/${escH(file)}" alt="${escH(caption)}">
-  <p class="screenshot-caption">${escH(caption)}</p>
+  <img src="${escH(src)}" alt="${escH(caption)}">
+  ${caption ? `<p class="screenshot-caption">${escH(caption)}</p>` : ''}
 </div>\n`;
-  const ta = document.getElementById('contentEditor');
-  ta.value += snippet;
-  toast('Ekran görüntüsü bloğu eklendi', 'success');
 }
+
+/* İmleç konumuna metin ekle */
+function insAtCursor(text) {
+  const ta = document.getElementById('contentEditor');
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  ta.value = ta.value.substring(0, s) + text + ta.value.substring(e);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = s + text.length;
+}
+
+/* ────────────────────────────────────────
+   SÜRÜKLE-BIRAK (editör üzerine)
+──────────────────────────────────────── */
+function initDragDrop() {
+  const wrap    = document.getElementById('editorWrap');
+  const overlay = document.getElementById('dragOverlay');
+  const ta      = document.getElementById('contentEditor');
+
+  wrap.addEventListener('dragenter', e => {
+    if (e.dataTransfer.types.includes('Files')) overlay.classList.add('show');
+  });
+  wrap.addEventListener('dragleave', e => {
+    if (!wrap.contains(e.relatedTarget)) overlay.classList.remove('show');
+  });
+  wrap.addEventListener('dragover', e => e.preventDefault());
+  wrap.addEventListener('drop', e => {
+    e.preventDefault();
+    overlay.classList.remove('show');
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) return toast('Sadece görsel dosyaları desteklenir', 'error');
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const snippet = buildScreenshotSnippet(ev.target.result, file.name.replace(/\.[^.]+$/, ''), file.name);
+      insAtCursor(snippet);
+      toast('Görsel eklendi', 'success');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  /* Ctrl+V ile panodan görsel yapıştırma */
+  ta.addEventListener('paste', e => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
+          insAtCursor(snippet);
+          toast('Ekran görüntüsü yapıştırıldı', 'success');
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
+  });
+
+  /* Modal drop zone */
+  const dz = document.getElementById('modalDropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    handleModalFile(e.dataTransfer.files[0]);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initDragDrop);
 
 /* ────────────────────────────────────────
    HTML ŞABLONU OLUŞTUR
 ──────────────────────────────────────── */
 function buildArticleHTML(data) {
-  const { title, slug, date, category, tags, readingTime, content } = data;
+  const { title, titleEn, slug, date, category, tags, readingTime, content, contentEn } = data;
   const siteName   = localStorage.getItem('siteName')   || '0xBlog';
   const authorName = localStorage.getItem('authorName') || `${siteName} Yazarı`;
   const tagsHtml   = tags.map(t => `<span class="tag active">${escH(t.trim())}</span>`).join('\n        ');
-  const dateStr    = new Date(date + 'T00:00:00').toLocaleDateString('tr-TR',
-    { day:'2-digit', month:'long', year:'numeric' });
+  const dateStr    = new Date(date + 'T00:00:00').toLocaleDateString('tr-TR', { day:'2-digit', month:'long', year:'numeric' });
+  const dateStrEn  = new Date(date + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+  const hasEn      = contentEn && contentEn.trim().length > 0;
 
   return `<!DOCTYPE html>
 <html lang="tr">
@@ -1277,65 +1574,84 @@ function buildArticleHTML(data) {
         <span class="logo-bracket">[</span>${escH(siteName)}<span class="logo-bracket">]</span>
         <span class="logo-cursor"></span>
       </a>
-      <button class="nav-toggle" id="navToggle" aria-label="Menüyü aç/kapat">&#9776;</button>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">&#9776;</button>
       <ul class="nav-links" id="navLinks">
-        <li><a href="../index.html">Ana Sayfa</a></li>
-        <li><a href="../index.html#posts">Makaleler</a></li>
-        <li><a href="../index.html#about">Hakkında</a></li>
+        <li><a href="../index.html" data-i18n="nav_home">Ana Sayfa</a></li>
+        <li><a href="../index.html#posts" data-i18n="nav_articles">Makaleler</a></li>
+        <li><a href="../index.html#about" data-i18n="nav_about">Hakkında</a></li>
       </ul>
+      <div class="lang-toggle" id="langToggleContainer"></div>
     </nav>
   </header>
 
   <main class="page-wrapper">
     <header class="article-hero">
       <nav class="article-breadcrumb" aria-label="Breadcrumb">
-        <a href="../index.html">Ana Sayfa</a>
+        <a href="../index.html" data-i18n="breadcrumb_home">Ana Sayfa</a>
         <span class="sep">/</span>
-        <a href="../index.html#posts">Makaleler</a>
+        <a href="../index.html#posts" data-i18n="breadcrumb_articles">Makaleler</a>
         <span class="sep">/</span>
         <span>${escH(category)}</span>
       </nav>
-      <h1>${escH(title)}</h1>
+
+      <h1 class="lang-block" data-lang="tr">${escH(title)}</h1>
+      ${hasEn && titleEn ? `<h1 class="lang-block" data-lang="en" style="display:none">${escH(titleEn)}</h1>` : ''}
+
       <div class="article-meta-bar">
-        <span>${dateStr}</span>
+        <span class="lang-block" data-lang="tr">${dateStr}</span>
+        ${hasEn ? `<span class="lang-block" data-lang="en" style="display:none">${dateStrEn}</span>` : ''}
         <span class="sep">|</span>
         <span>${escH(category)}</span>
         <span class="sep">|</span>
-        <span>${escH(readingTime)} okuma</span>
+        <span class="lang-block" data-lang="tr">${escH(readingTime)} okuma</span>
+        ${hasEn ? `<span class="lang-block" data-lang="en" style="display:none">${escH(readingTime)} read</span>` : ''}
         <span class="sep">|</span>
         <span style="color:var(--neon-dim)">${escH(authorName)}</span>
       </div>
-      <div class="article-tags">
-        ${tagsHtml}
-      </div>
+      <div class="article-tags">${tagsHtml}</div>
     </header>
 
     <article class="article-body">
-${content}
 
-      <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
-        <a href="../index.html" class="read-more">&larr; Tüm Makaleler</a>
-        <span style="font-size:.78rem;color:var(--text-muted)">Son güncelleme: ${dateStr}</span>
+      <div class="lang-block" data-lang="tr">
+${content}
+        <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+          <a href="../index.html" class="read-more" data-i18n="back_to_articles">&larr; Tüm Makaleler</a>
+          <span style="font-size:.78rem;color:var(--text-muted)"><span data-i18n="last_updated">Son güncelleme:</span> ${dateStr}</span>
+        </div>
       </div>
+
+      ${hasEn ? `
+      <div class="lang-block" data-lang="en" style="display:none">
+${contentEn}
+        <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+          <a href="../index.html" class="read-more" data-i18n="back_to_articles">&larr; All Articles</a>
+          <span style="font-size:.78rem;color:var(--text-muted)"><span data-i18n="last_updated">Last updated:</span> ${dateStrEn}</span>
+        </div>
+      </div>` : ''}
+
     </article>
   </main>
 
   <footer class="site-footer">
     <span class="footer-symbol">_</span>
-    &copy; ${new Date().getFullYear()} ${escH(siteName)} &mdash; Tüm içerikler eğitim amaçlıdır.
+    &copy; ${new Date().getFullYear()} ${escH(siteName)} &mdash;
+    <span data-i18n="footer_copy">Tüm içerikler eğitim amaçlıdır.</span>
   </footer>
 
+  <script src="../lang.js"><\/script>
   <script>
-    document.getElementById('year') && (document.getElementById('year').textContent = new Date().getFullYear());
     document.getElementById('navToggle').addEventListener('click', () => {
       document.getElementById('navLinks').classList.toggle('open');
     });
     function copyCode(btn) {
-      const pre = btn.closest('.code-block').querySelector('pre');
+      const pre  = btn.closest('.code-block').querySelector('pre');
+      const lang = typeof getLang === 'function' ? getLang() : 'tr';
+      const orig = btn.textContent;
       navigator.clipboard.writeText(pre.innerText).then(() => {
-        btn.textContent = 'Kopyalandı!';
+        btn.textContent = lang === 'en' ? 'Copied!' : 'Kopyalandı!';
         btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = 'Kopyala'; btn.classList.remove('copied'); }, 2000);
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
       }).catch(() => {});
     }
   <\/script>
@@ -1352,16 +1668,19 @@ async function publishArticle() {
   if (!token) return toast('Token girilmedi (Ayarlar → Token)', 'error');
 
   const title       = document.getElementById('artTitle').value.trim();
+  const titleEn     = document.getElementById('artTitleEn').value.trim();
   const category    = document.getElementById('artCategory').value.trim();
   const date        = document.getElementById('artDate').value;
   const readingTime = document.getElementById('artReadingTime').value.trim() || '5 dk';
   const tagsRaw     = document.getElementById('artTags').value.trim();
   const excerpt     = document.getElementById('artExcerpt').value.trim();
+  const excerptEn   = document.getElementById('artExcerptEn').value.trim();
   const content     = document.getElementById('contentEditor').value.trim();
+  const contentEn   = document.getElementById('contentEditorEn').value.trim();
 
   if (!title)   return toast('Başlık zorunlu', 'error');
   if (!date)    return toast('Tarih zorunlu', 'error');
-  if (!content) return toast('İçerik boş olamaz', 'error');
+  if (!content) return toast('TR içerik boş olamaz', 'error');
 
   const slug = toSlug(title) || 'makale-' + Date.now();
   const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -1398,7 +1717,7 @@ async function publishArticle() {
   try {
     /* 1. Makale HTML dosyası oluştur */
     step('html', `posts/${slug}.html oluşturuluyor...`);
-    const html = buildArticleHTML({ title, slug, date, category, tags, readingTime, content });
+    const html = buildArticleHTML({ title, titleEn, slug, date, category, tags, readingTime, content, contentEn });
     const existing = await ghGet(articlePath);
     await ghPut(articlePath, html,
       `Add article: ${title}`,
@@ -1414,7 +1733,11 @@ async function publishArticle() {
     }
     /* Aynı slug varsa güncelle, yoksa ekle */
     const idx = posts.findIndex(p => p.url === articleUrl);
-    const entry = { id: slug, title, date, category, url: articleUrl, excerpt, tags, readingTime };
+    const entry = {
+      id: slug, title, date, category, url: articleUrl, excerpt, tags, readingTime,
+      ...(titleEn   && { title_en:   titleEn   }),
+      ...(excerptEn && { excerpt_en: excerptEn })
+    };
     if (idx >= 0) posts[idx] = entry;
     else posts.unshift(entry);
 

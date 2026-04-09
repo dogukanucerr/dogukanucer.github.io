@@ -167,6 +167,43 @@ a:hover {
   text-shadow: none;
 }
 
+/* ── Dil Toggle ── */
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.lang-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: all 150ms ease;
+}
+.lang-toggle-btn:hover { color: var(--neon-green); background: rgba(0,255,65,0.05); }
+.lang-toggle-btn.active {
+  color: var(--neon-green);
+  background: rgba(0,255,65,0.1);
+}
+.lang-toggle-sep {
+  color: var(--border-bright);
+  font-size: 0.7rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Makale dil blokları */
+.lang-block { transition: none; }
+
 /* Hamburger */
 .nav-toggle {
   display: none;
