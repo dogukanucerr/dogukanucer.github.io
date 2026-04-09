@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="d">
+  <title>d — Dogukan Ucer</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>">
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="nav-inner">
+      <a href="../index.html" class="site-logo">
+        <span class="logo-bracket">[</span>Dogukan Ucer<span class="logo-bracket">]</span>
+        <span class="logo-cursor"></span>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">&#9776;</button>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="../index.html" data-i18n="nav_home">Ana Sayfa</a></li>
+        <li><a href="../index.html#posts" data-i18n="nav_articles">Makaleler</a></li>
+        <li><a href="../index.html#about" data-i18n="nav_about">Hakkında</a></li>
+      </ul>
+      <div class="lang-toggle" id="langToggleContainer"></div>
+    </nav>
+  </header>
+
+  <main class="page-wrapper">
+    <header class="article-hero">
+      <nav class="article-breadcrumb" aria-label="Breadcrumb">
+        <a href="../index.html" data-i18n="breadcrumb_home">Ana Sayfa</a>
+        <span class="sep">/</span>
+        <a href="../index.html#posts" data-i18n="breadcrumb_articles">Makaleler</a>
+        <span class="sep">/</span>
+        <span>d</span>
+      </nav>
+
+      <h1 class="lang-block" data-lang="tr">d</h1>
+      
+
+      <div class="article-meta-bar">
+        <span class="lang-block" data-lang="tr">09 Nisan 2026</span>
+        
+        <span class="sep">|</span>
+        <span>d</span>
+        <span class="sep">|</span>
+        <span class="lang-block" data-lang="tr">3 okuma</span>
+        
+        <span class="sep">|</span>
+        <span style="color:var(--neon-dim)">Dogukan Ucer</span>
+      </div>
+      <div class="article-tags"><span class="tag active">d</span></div>
+    </header>
+
+    <article class="article-body">
+
+      <div class="lang-block" data-lang="tr">
+d
+        <div style="margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+          <a href="../index.html" class="read-more" data-i18n="back_to_articles">&larr; Tüm Makaleler</a>
+          <span style="font-size:.78rem;color:var(--text-muted)"><span data-i18n="last_updated">Son güncelleme:</span> 09 Nisan 2026</span>
+        </div>
+      </div>
+
+      
+
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-symbol">_</span>
+    &copy; 2026 Dogukan Ucer &mdash;
+    <span data-i18n="footer_copy">Tüm içerikler eğitim amaçlıdır.</span>
+  </footer>
+
+  <script src="../lang.js"></script>
+  <script>
+    document.getElementById('navToggle').addEventListener('click', () => {
+      document.getElementById('navLinks').classList.toggle('open');
+    });
+    function copyCode(btn) {
+      const pre  = btn.closest('.code-block').querySelector('pre');
+      const lang = typeof getLang === 'function' ? getLang() : 'tr';
+      const orig = btn.textContent;
+      navigator.clipboard.writeText(pre.innerText).then(() => {
+        btn.textContent = lang === 'en' ? 'Copied!' : 'Kopyalandı!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+      }).catch(() => {});
+    }
+  </script>
+</body>
+</html>
