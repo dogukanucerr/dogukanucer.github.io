@@ -624,6 +624,35 @@
     #publishStatus .step.err    { color: var(--red); }
     #publishStatus .step-icon { width: 16px; text-align: center; }
 
+    /* ── KATEGORİ SEÇİCİ ── */
+    .cat-selector {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin-top: .2rem;
+    }
+    .cat-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: .55rem .5rem;
+      border-radius: var(--r);
+      border: 1px solid var(--border2);
+      background: none;
+      color: var(--t3);
+      font-family: var(--font);
+      font-size: .8rem;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: center;
+      letter-spacing: .03em;
+    }
+    .cat-btn:hover { border-color: var(--t2); color: var(--t1); }
+    .cat-btn.active-ms  { border-color: #0078d4; color: #0078d4; background: rgba(0,120,212,.08); }
+    .cat-btn.active-tm  { border-color: #d40000; color: #ff4444; background: rgba(212,0,0,.08); }
+    .cat-btn.active-oth { border-color: var(--green); color: var(--green); background: rgba(0,255,65,.06); }
+    .cat-btn .cat-icon  { display: block; font-size: 1.2rem; margin-bottom: .2rem; }
+    .cat-btn .cat-label { display: block; font-size: .72rem; }
+
     /* ── SLUG PREVIEW ── */
     .slug-preview {
       font-size: .72rem;
@@ -795,12 +824,27 @@
           <div class="grid-2">
             <div class="form-group">
               <label><span>//</span> Kategori</label>
-              <input type="text" id="artCategory" placeholder="Web Security, Linux Security..." list="catSuggestions">
-              <datalist id="catSuggestions">
-                <option value="Microsoft Security">
-                <option value="Trend Micro">
-                <option value="Others">
-              </datalist>
+              <input type="hidden" id="artCategory" value="">
+              <div class="cat-selector">
+                <button type="button" class="cat-btn" id="cat-ms"
+                        onclick="selectCat('Microsoft Security','cat-ms','active-ms')">
+                  <span class="cat-icon">🪟</span>
+                  <span class="cat-label">Microsoft Security</span>
+                </button>
+                <button type="button" class="cat-btn" id="cat-tm"
+                        onclick="selectCat('Trend Micro','cat-tm','active-tm')">
+                  <span class="cat-icon">🛡</span>
+                  <span class="cat-label">Trend Micro</span>
+                </button>
+                <button type="button" class="cat-btn" id="cat-oth"
+                        onclick="selectCat('Others','cat-oth','active-oth')">
+                  <span class="cat-icon">📁</span>
+                  <span class="cat-label">Others</span>
+                </button>
+              </div>
+              <div id="catError" style="display:none;font-size:.72rem;color:var(--red);margin-top:.3rem">
+                ✗ Lütfen bir kategori seçin
+              </div>
             </div>
           </div>
           <div class="grid-2">
@@ -1347,6 +1391,25 @@ function autoSlug() {
   document.getElementById('slugPreview').textContent = toSlug(title) || 'otomatik-olusturulur';
 }
 
+function selectCat(value, btnId, activeClass) {
+  /* Tüm butonları sıfırla */
+  ['cat-ms','cat-tm','cat-oth'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'cat-btn';
+  });
+  /* Seçileni işaretle */
+  document.getElementById(btnId).classList.add(activeClass);
+  document.getElementById('artCategory').value = value;
+  document.getElementById('catError').style.display = 'none';
+}
+
+function resetCatSelector() {
+  ['cat-ms','cat-tm','cat-oth'].forEach(id => {
+    document.getElementById(id).className = 'cat-btn';
+  });
+  document.getElementById('artCategory').value = '';
+}
+
 function setTodayDate() {
   const d = new Date();
   const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1734,7 +1797,11 @@ async function publishArticle() {
   const content     = document.getElementById('contentEditor').value.trim();
   const contentEn   = document.getElementById('contentEditorEn').value.trim();
 
-  if (!title)   return toast('Başlık zorunlu', 'error');
+  if (!title)    return toast('Başlık zorunlu', 'error');
+  if (!category) {
+    document.getElementById('catError').style.display = 'block';
+    return toast('Kategori seçin', 'error');
+  }
   if (!date)    return toast('Tarih zorunlu', 'error');
   if (!content) return toast('TR içerik boş olamaz', 'error');
 
@@ -1821,6 +1888,7 @@ async function publishArticle() {
       document.getElementById('contentEditor').value = '';
       document.getElementById('slugPreview').textContent = 'otomatik-olusturulur';
       setTodayDate();
+      resetCatSelector();
     }, 1500);
 
   } catch(e) {
