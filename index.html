@@ -46,6 +46,9 @@
       </p>
       <div class="hero-tags" id="categoryFilters">
         <span class="tag active" data-cat="all" data-i18n="filter_all">Tümü</span>
+        <span class="tag" data-cat="Microsoft Security">Microsoft Security</span>
+        <span class="tag" data-cat="Trend Micro">Trend Micro</span>
+        <span class="tag" data-cat="Others">Others</span>
       </div>
     </section>
 
@@ -165,18 +168,8 @@
     /* Kategori filtreleri */
     window.allPosts = [];
 
-    function buildCategoryFilters(posts) {
-      const cats = [...new Set(posts.map(p => p.category).filter(Boolean))];
+    function buildCategoryFilters() {
       const container = document.getElementById('categoryFilters');
-      /* Mevcut "Tümü" dışındakileri temizle */
-      container.querySelectorAll('[data-cat]:not([data-cat="all"])').forEach(el => el.remove());
-      cats.forEach(cat => {
-        const btn = document.createElement('span');
-        btn.className = 'tag';
-        btn.dataset.cat = cat;
-        btn.textContent = cat;
-        container.appendChild(btn);
-      });
       container.addEventListener('click', e => {
         const btn = e.target.closest('[data-cat]');
         if (!btn) return;
@@ -210,7 +203,7 @@
           return;
         }
         window.allPosts = posts.sort((a,b) => new Date(b.date) - new Date(a.date));
-        buildCategoryFilters(window.allPosts);
+        buildCategoryFilters();
         container.innerHTML = window.allPosts.map(renderCard).join('');
       } catch(err) {
         container.innerHTML = `<div class="state-message error">${t('state_error')}<br>

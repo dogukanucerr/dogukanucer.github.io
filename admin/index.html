@@ -797,10 +797,9 @@
               <label><span>//</span> Kategori</label>
               <input type="text" id="artCategory" placeholder="Web Security, Linux Security..." list="catSuggestions">
               <datalist id="catSuggestions">
-                <option value="Web Security"><option value="Linux Security">
-                <option value="Network Security"><option value="Malware Analysis">
-                <option value="CTF Write-up"><option value="Forensics">
-                <option value="OSINT"><option value="Cryptography">
+                <option value="Microsoft Security">
+                <option value="Trend Micro">
+                <option value="Others">
               </datalist>
             </div>
           </div>
@@ -1006,6 +1005,8 @@ Image: toolbar button / drag-drop / Ctrl+V"></textarea>
           </div>
           <button class="btn btn-primary" onclick="saveConfig()">Ayarları Kaydet</button>
           <button class="btn btn-secondary" style="margin-left:.5rem" onclick="testConnection()">Bağlantıyı Test Et</button>
+          <button class="btn btn-primary" style="margin-left:.5rem;border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.08)" onclick="deploySiteFiles()">&#9650; Site Dosyalarını GitHub'a Gönder</button>
+          <div id="deployStatus" style="margin-top:.8rem;font-size:.78rem;color:var(--t3)"></div>
         </div>
 
         <div class="card">
@@ -1147,12 +1148,18 @@ async function testConnection() {
   if (!owner || !repo || !token) return toast('Owner, repo ve token gerekli', 'error');
   toast('Bağlantı test ediliyor...', 'info');
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+    const res  = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       headers: { 'Authorization': `token ${token}` }
     });
     const data = await res.json();
-    if (res.ok) toast(`✓ Bağlantı başarılı: ${data.full_name}`, 'success');
-    else toast(`Hata: ${data.message}`, 'error');
+    if (!res.ok) return toast(`Hata: ${data.message}`, 'error');
+
+    /* Varsayılan branch'i otomatik al ve kaydet */
+    const defaultBranch = data.default_branch || 'main';
+    localStorage.setItem('ghBranch', defaultBranch);
+    document.getElementById('cfgBranch').value = defaultBranch;
+
+    toast(`✓ Bağlantı başarılı: ${data.full_name} — branch: ${defaultBranch}`, 'success');
   } catch(e) {
     toast('Bağlantı hatası: ' + e.message, 'error');
   }
@@ -1172,6 +1179,46 @@ async function ghGet(path) {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
   return res.json();
+}
+
+/* ────────────────────────────────────────
+   SİTE DOSYALARINI GITHUB'A GÖNDER
+──────────────────────────────────────── */
+async function deploySiteFiles() {
+  const { owner, repo, token } = ghCfg();
+  if (!owner || !repo || !token) return toast('Önce GitHub ayarlarını kaydet', 'error');
+
+  const statusEl = document.getElementById('deployStatus');
+  const files = ['index.html', 'style.css', 'lang.js', 'posts.json'];
+  statusEl.innerHTML = '⏳ Dosyalar yükleniyor...';
+
+  let done = 0, errs = [];
+
+  for (const file of files) {
+    try {
+      statusEl.innerHTML = `⏳ ${file} gönderiliyor... (${done}/${files.length})`;
+      /* Dosyayı fetch et — admin ile aynı origin'de olduğu için çalışır */
+      const base = window.location.href.replace(/\/admin\/[^/]*$/, '/');
+      const res  = await fetch(base + file);
+      if (!res.ok) throw new Error(`Fetch hatası: ${res.status}`);
+      const text = await res.text();
+
+      /* Mevcut SHA al */
+      const existing = await ghGet(file);
+      await ghPut(file, text, `Deploy: update ${file}`, existing ? existing.sha : null);
+      done++;
+    } catch(e) {
+      errs.push(`${file}: ${e.message}`);
+    }
+  }
+
+  if (errs.length === 0) {
+    statusEl.innerHTML = `✓ ${done}/${files.length} dosya başarıyla gönderildi. GitHub Pages 1-2 dk içinde güncellenir.`;
+    toast('Site dosyaları GitHub\'a gönderildi!', 'success');
+  } else {
+    statusEl.innerHTML = `⚠ ${done} başarılı, ${errs.length} hata:<br>${errs.map(e => `✗ ${e}`).join('<br>')}`;
+    toast('Bazı dosyalar gönderilemedi', 'error');
+  }
 }
 
 function toBase64(str) {
@@ -1760,7 +1807,8 @@ async function publishArticle() {
     updateStep('json', 'done');
 
     /* Başarı */
-    step('done', `✓ Yayınlandı! GitHub Pages birkaç dk içinde güncellenir.`);
+    const { owner, repo } = ghCfg();
+    step('done', `✓ Yayınlandı! <a href="https://github.com/${owner}/${repo}/blob/main/posts.json" target="_blank" style="color:var(--cyan)">posts.json'ı doğrula →</a> &nbsp;|&nbsp; GitHub Pages 1-2 dk içinde güncellenir.`);
     updateStep('done', 'done');
     toast(`"${title}" yayınlandı!`, 'success');
 
