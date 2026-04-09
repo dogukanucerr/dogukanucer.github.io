@@ -1592,9 +1592,14 @@ function buildScreenshotSnippet(src, caption, barText) {
 </div>\n`;
 }
 
-/* İmleç konumuna metin ekle */
-function insAtCursor(text) {
-  const ta = document.getElementById('contentEditor');
+/* İmleç konumuna metin ekle — ta parametresi verilmezse aktif editörü kullanır */
+function insAtCursor(text, ta) {
+  if (!ta) {
+    const enWrap = document.getElementById('editorWrapEN');
+    ta = (enWrap && enWrap.style.display !== 'none')
+      ? document.getElementById('contentEditorEn')
+      : document.getElementById('contentEditor');
+  }
   const s = ta.selectionStart, e = ta.selectionEnd;
   ta.value = ta.value.substring(0, s) + text + ta.value.substring(e);
   ta.focus();
@@ -1630,24 +1635,43 @@ function initDragDrop() {
     reader.readAsDataURL(file);
   });
 
-  /* Ctrl+V ile panodan görsel yapıştırma */
-  ta.addEventListener('paste', e => {
+  /* Ctrl+V ile panodan görsel yapıştırma — textarea odaklanmasa bile çalışır */
+  function handlePasteImage(e) {
+    /* Makale formu görünür değilse yoksay */
+    const formEl = document.getElementById('newPostForm');
+    if (!formEl || formEl.style.display === 'none') return;
+
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
+
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         e.preventDefault();
         const file = item.getAsFile();
         const reader = new FileReader();
         reader.onload = ev => {
+          /* Aktif dil sekmesine göre doğru editöre yapıştır */
+          const enWrap = document.getElementById('editorWrapEN');
+          const activeTA = (enWrap && enWrap.style.display !== 'none')
+            ? document.getElementById('contentEditorEn')
+            : document.getElementById('contentEditor');
           const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
-          insAtCursor(snippet);
-          toast('Ekran görüntüsü yapıştırıldı', 'success');
+          insAtCursor(snippet, activeTA);
+          toast('📸 Ekran görüntüsü yapıştırıldı', 'success');
         };
         reader.readAsDataURL(file);
         break;
       }
     }
+  }
+
+  /* Hem textarea odaklıyken hem de sayfanın herhangi bir yerindeyken çalışır */
+  ta.addEventListener('paste', handlePasteImage);
+  document.addEventListener('paste', e => {
+    /* Eğer odak zaten bir textarea/input üzerindeyse (metin yazıyor) — müdahale etme */
+    const active = document.activeElement;
+    if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
+    handlePasteImage(e);
   });
 
   /* Modal drop zone */
