@@ -910,6 +910,8 @@
             <div class="tb-sep"></div>
             <button class="tb-btn" style="color:var(--cyan);border-color:rgba(0,212,255,.2)"
                     onclick="openImgModal()">&#128247; Görsel Ekle</button>
+            <button class="tb-btn" id="pasteImgBtn" style="color:var(--green);border-color:rgba(0,255,65,.2)"
+                    onclick="pasteImageFromClipboard()">&#128203; Panodan Yapıştır</button>
             <button class="tb-btn" onclick="ins('table')">⊞ Tablo</button>
             <button class="tb-btn" onclick="ins('blockquote')">❝ Alıntı</button>
           </div>
@@ -1607,6 +1609,57 @@ function insAtCursor(text, ta) {
 }
 
 /* ────────────────────────────────────────
+   PANODAN GÖRSEL YAPISTIR (Modern Clipboard API)
+   Greenshots, Snipping Tool, her kaynakla çalışır
+──────────────────────────────────────── */
+async function pasteImageFromClipboard() {
+  const btn = document.getElementById('pasteImgBtn');
+
+  /* Clipboard API desteklenmiyor mu? */
+  if (!navigator.clipboard || !navigator.clipboard.read) {
+    toast('Tarayıcı pano okumayı desteklemiyor. Chrome/Edge kullanın.', 'error');
+    return;
+  }
+
+  try {
+    btn.textContent = '⏳ Okunuyor...';
+    btn.disabled = true;
+
+    const items = await navigator.clipboard.read();
+    let found = false;
+
+    for (const item of items) {
+      /* PNG, JPEG, GIF, BMP — hangisi varsa al */
+      const imageType = item.types.find(t => t.startsWith('image/'));
+      if (imageType) {
+        const blob = await item.getType(imageType);
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
+          insAtCursor(snippet);
+          toast('Ekran görüntüsü yapıştırıldı', 'success');
+        };
+        reader.readAsDataURL(blob);
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) toast('Panoda görsel bulunamadı. Önce Greenshots ile kopyala.', 'error');
+
+  } catch (e) {
+    if (e.name === 'NotAllowedError') {
+      toast('Pano izni reddedildi — tarayıcı adres çubuğundaki kilit ikonundan izin ver.', 'error');
+    } else {
+      toast('Pano hatası: ' + e.message, 'error');
+    }
+  } finally {
+    btn.textContent = '📋 Panodan Yapıştır';
+    btn.disabled = false;
+  }
+}
+
+/* ────────────────────────────────────────
    SÜRÜKLE-BIRAK (editör üzerine)
 ──────────────────────────────────────── */
 function initDragDrop() {
@@ -1635,41 +1688,47 @@ function initDragDrop() {
     reader.readAsDataURL(file);
   });
 
-  /* Ctrl+V ile panodan görsel yapıştırma — textarea odaklanmasa bile çalışır */
+  /* Ctrl+V — Greenshots dahil her kaynaktan görsel yapıştırma */
   function handlePasteImage(e) {
-    /* Makale formu görünür değilse yoksay */
-    const formEl = document.getElementById('newPostForm');
-    if (!formEl || formEl.style.display === 'none') return;
-
-    const items = e.clipboardData && e.clipboardData.items;
+    const items = (e.clipboardData || e.originalEvent && e.originalEvent.clipboardData || {}).items;
     if (!items) return;
 
+    let imageFile = null;
     for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        const reader = new FileReader();
-        reader.onload = ev => {
-          /* Aktif dil sekmesine göre doğru editöre yapıştır */
-          const enWrap = document.getElementById('editorWrapEN');
-          const activeTA = (enWrap && enWrap.style.display !== 'none')
-            ? document.getElementById('contentEditorEn')
-            : document.getElementById('contentEditor');
-          const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
-          insAtCursor(snippet, activeTA);
-          toast('📸 Ekran görüntüsü yapıştırıldı', 'success');
-        };
-        reader.readAsDataURL(file);
+      /* PNG, JPEG, BMP, GIF — Greenshots genelde image/png gönderir */
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        imageFile = item.getAsFile();
         break;
       }
     }
+    if (!imageFile) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const reader = new FileReader();
+    reader.onload = ev => {
+      /* Aktif dil sekmesine göre doğru editöre yapıştır */
+      const enWrap = document.getElementById('editorWrapEN');
+      const activeTA = (enWrap && enWrap.style.display !== 'none')
+        ? document.getElementById('contentEditorEn')
+        : document.getElementById('contentEditor');
+      const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
+      insAtCursor(snippet, activeTA);
+      toast('Ekran görüntüsü yapıştırıldı', 'success');
+    };
+    reader.readAsDataURL(imageFile);
   }
 
-  /* Hem textarea odaklıyken hem de sayfanın herhangi bir yerindeyken çalışır */
+  /* Textarea üzerinde odak varken */
   ta.addEventListener('paste', handlePasteImage);
+
+  /* Odak DIŞINDAYKEN — Yeni Makale view'i açıksa çalışır */
   document.addEventListener('paste', e => {
-    /* Eğer odak zaten bir textarea/input üzerindeyse (metin yazıyor) — müdahale etme */
+    const view = document.getElementById('view-newArticle');
+    if (!view || !view.classList.contains('active')) return;
     const active = document.activeElement;
+    /* Metin alanına yazıyorsa müdahale etme */
     if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
     handlePasteImage(e);
   });
