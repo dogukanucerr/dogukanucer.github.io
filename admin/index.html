@@ -1363,16 +1363,67 @@ async function loadArticlesList() {
     const posts = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\n/g,'')), c => c.charCodeAt(0))));
     posts.sort((a,b) => new Date(b.date) - new Date(a.date));
     el.innerHTML = posts.map(p => `
-      <div class="article-row">
-        <div>
+      <div class="article-row" id="row-${escH(p.id||p.url)}">
+        <div style="flex:1;min-width:0">
           <div class="art-title">${escH(p.title)}</div>
-          <div class="art-meta">${formatDate(p.date)} &mdash; ${escH(p.readingTime||'')} &mdash; ${(p.tags||[]).join(', ')}</div>
+          <div class="art-meta">${formatDate(p.date)} &mdash; ${escH(p.category||'')} &mdash; ${(p.tags||[]).map(t=>escH(t)).join(', ')}</div>
         </div>
-        <span class="art-category">${escH(p.category||'')}</span>
         <a href="../${escH(p.url)}" target="_blank" class="btn btn-secondary btn-sm">Gör ↗</a>
+        <button class="btn btn-sm" style="border-color:var(--red);color:var(--red);background:rgba(255,68,68,.08)"
+                onclick="deleteArticle('${escH(p.url)}','${escH(p.id||'')}','${escH(p.title)}')">✕ Sil</button>
       </div>`).join('') || '<p style="color:var(--t3)">Makale yok.</p>';
   } catch(e) {
     el.innerHTML = `<p style="color:var(--red);font-size:.82rem">Hata: ${escH(e.message)}</p>`;
+  }
+}
+
+/* ────────────────────────────────────────
+   MAKALE SİL
+──────────────────────────────────────── */
+async function deleteArticle(url, id, title) {
+  if (!confirm(`"${title}" makalesini kalıcı olarak silmek istediğine emin misin?\n\nBu işlem geri alınamaz.`)) return;
+
+  const { owner, repo, branch, token } = ghCfg();
+  if (!token) { toast('Token eksik — Ayarlar\'dan gir.', 'error'); return; }
+
+  try {
+    toast('Siliniyor...', 'info');
+
+    /* 1. HTML dosyasını sil */
+    try {
+      const htmlFile = await ghGet(url);
+      if (htmlFile) {
+        await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${url}`, {
+          method: 'DELETE',
+          headers: { Authorization: `token ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: `chore: delete article ${url}`, sha: htmlFile.sha, branch })
+        });
+      }
+    } catch(e) { /* dosya zaten yoksa devam et */ }
+
+    /* 2. posts.json'dan kaldır */
+    const jsonFile = await ghGet('posts.json');
+    if (!jsonFile) { toast('posts.json bulunamadı', 'error'); return; }
+
+    const posts = JSON.parse(new TextDecoder().decode(
+      Uint8Array.from(atob(jsonFile.content.replace(/\n/g,'')), c => c.charCodeAt(0))
+    ));
+
+    const updated = posts.filter(p => p.url !== url && p.id !== id);
+    if (updated.length === posts.length) { toast('Makale posts.json\'da bulunamadı', 'error'); return; }
+
+    await ghPut('posts.json', JSON.stringify(updated, null, 2), `chore: remove ${url} from posts.json`, jsonFile.sha);
+
+    /* 3. Satırı DOM'dan kaldır */
+    const rowId = id || url;
+    const row = document.getElementById('row-' + rowId);
+    if (row) row.remove();
+
+    toast(`"${title}" silindi`, 'success');
+    loadDashboard();
+
+  } catch(e) {
+    toast('Silme hatası: ' + e.message, 'error');
   }
 }
 
@@ -1560,23 +1611,22 @@ function handleModalFile(file) {
 
 function confirmInsertImg() {
   const activePanel = document.querySelector('.modal-panel.show');
-  let snippet = '';
 
   if (activePanel.id === 'mpUpload') {
     if (!_pendingBase64) return toast('Önce bir görsel seç veya sürükle', 'error');
-    const caption = document.getElementById('modalCaption1').value.trim();
-    snippet = buildScreenshotSnippet(_pendingBase64, caption, '');
+    const caption = document.getElementById('modalCaption1').value.trim() || 'Ekran görüntüsü';
+    storeAndInsertImage(_pendingBase64, caption);
   } else {
     const filePath = document.getElementById('modalFilePath').value.trim();
     if (!filePath) return toast('Dosya adı gir', 'error');
     const caption  = document.getElementById('modalCaption2').value.trim();
     const barText  = document.getElementById('modalBarText').value.trim() || filePath;
-    snippet = buildScreenshotSnippet(`../assets/${filePath}`, caption, barText);
+    /* Harici yol — placeholder değil, direkt HTML snippet */
+    insAtCursor(buildScreenshotSnippet(`../assets/${filePath}`, caption, barText));
+    toast('Görsel eklendi', 'success');
   }
 
-  insAtCursor(snippet);
   closeImgModal();
-  toast('Görsel eklendi', 'success');
 }
 
 function buildScreenshotSnippet(src, caption, barText) {
@@ -1609,6 +1659,38 @@ function insAtCursor(text, ta) {
 }
 
 /* ────────────────────────────────────────
+   GÖRSEL PLACEHOLDER SİSTEMİ
+   Base64 ham metin yerine [IMG:001] kısa kod editöre girer.
+   Gerçek veri bellekte tutulur, yayınlarken HTML'e dönüşür.
+──────────────────────────────────────── */
+window.editorImages   = {};   /* { img001: 'data:image/png;base64,...' } */
+window.editorImgCount = 0;
+
+function storeAndInsertImage(dataUri, caption, targetTA) {
+  const id  = 'img' + String(++window.editorImgCount).padStart(3,'0');
+  window.editorImages[id] = dataUri;
+  const cap = caption || 'Ekran görüntüsü';
+  /* Editöre sadece kısa placeholder gir */
+  insAtCursor(`[IMG:${id}:${cap}]`, targetTA);
+  toast('Görsel eklendi — [' + id + ']', 'success');
+}
+
+/* Placeholder'ları gerçek HTML'e çevir (yayınlamadan önce çağrılır) */
+function expandImgPlaceholders(content) {
+  return content.replace(/\[IMG:([a-z0-9]+):([^\]]*)\]/g, (_, id, cap) => {
+    const src = window.editorImages[id];
+    if (!src) return '';   /* görsel silinmişse boş bırak */
+    return buildScreenshotSnippet(src, cap, '');
+  });
+}
+
+/* Form temizlenince görsel deposunu da sıfırla */
+function resetImageStore() {
+  window.editorImages   = {};
+  window.editorImgCount = 0;
+}
+
+/* ────────────────────────────────────────
    PANODAN GÖRSEL YAPISTIR (Modern Clipboard API)
    Greenshots, Snipping Tool, her kaynakla çalışır
 ──────────────────────────────────────── */
@@ -1634,11 +1716,7 @@ async function pasteImageFromClipboard() {
       if (imageType) {
         const blob = await item.getType(imageType);
         const reader = new FileReader();
-        reader.onload = ev => {
-          const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
-          insAtCursor(snippet);
-          toast('Ekran görüntüsü yapıştırıldı', 'success');
-        };
+        reader.onload = ev => storeAndInsertImage(ev.target.result, 'Ekran görüntüsü');
         reader.readAsDataURL(blob);
         found = true;
         break;
@@ -1680,11 +1758,7 @@ function initDragDrop() {
     const file = e.dataTransfer.files[0];
     if (!file || !file.type.startsWith('image/')) return toast('Sadece görsel dosyaları desteklenir', 'error');
     const reader = new FileReader();
-    reader.onload = ev => {
-      const snippet = buildScreenshotSnippet(ev.target.result, file.name.replace(/\.[^.]+$/, ''), file.name);
-      insAtCursor(snippet);
-      toast('Görsel eklendi', 'success');
-    };
+    reader.onload = ev => storeAndInsertImage(ev.target.result, file.name.replace(/\.[^.]+$/,''));
     reader.readAsDataURL(file);
   });
 
@@ -1695,7 +1769,6 @@ function initDragDrop() {
 
     let imageFile = null;
     for (const item of items) {
-      /* PNG, JPEG, BMP, GIF — Greenshots genelde image/png gönderir */
       if (item.kind === 'file' && item.type.startsWith('image/')) {
         imageFile = item.getAsFile();
         break;
@@ -1706,17 +1779,13 @@ function initDragDrop() {
     e.preventDefault();
     e.stopPropagation();
 
+    const enWrap = document.getElementById('editorWrapEN');
+    const activeTA = (enWrap && enWrap.style.display !== 'none')
+      ? document.getElementById('contentEditorEn')
+      : document.getElementById('contentEditor');
+
     const reader = new FileReader();
-    reader.onload = ev => {
-      /* Aktif dil sekmesine göre doğru editöre yapıştır */
-      const enWrap = document.getElementById('editorWrapEN');
-      const activeTA = (enWrap && enWrap.style.display !== 'none')
-        ? document.getElementById('contentEditorEn')
-        : document.getElementById('contentEditor');
-      const snippet = buildScreenshotSnippet(ev.target.result, 'Ekran görüntüsü', '');
-      insAtCursor(snippet, activeTA);
-      toast('Ekran görüntüsü yapıştırıldı', 'success');
-    };
+    reader.onload = ev => storeAndInsertImage(ev.target.result, 'Ekran görüntüsü', activeTA);
     reader.readAsDataURL(imageFile);
   }
 
@@ -1750,7 +1819,10 @@ document.addEventListener('DOMContentLoaded', initDragDrop);
    HTML ŞABLONU OLUŞTUR
 ──────────────────────────────────────── */
 function buildArticleHTML(data) {
-  const { title, titleEn, slug, date, category, tags, readingTime, content, contentEn } = data;
+  let { title, titleEn, slug, date, category, tags, readingTime, content, contentEn } = data;
+  /* Placeholder'ları gerçek görsellere çevir */
+  content   = expandImgPlaceholders(content   || '');
+  contentEn = expandImgPlaceholders(contentEn || '');
   const siteName   = localStorage.getItem('siteName')   || 'Dogukan Ucer';
   const authorName = localStorage.getItem('authorName') || `${siteName} Yazarı`;
   const tagsHtml   = tags.map(t => `<span class="tag active">${escH(t.trim())}</span>`).join('\n        ');
@@ -1972,6 +2044,7 @@ async function publishArticle() {
       document.getElementById('slugPreview').textContent = 'otomatik-olusturulur';
       setTodayDate();
       resetCatSelector();
+      resetImageStore();
     }, 1500);
 
   } catch(e) {
