@@ -1174,11 +1174,19 @@ async function ghGet(path) {
   return res.json();
 }
 
+function toBase64(str) {
+  /* Türkçe ve özel karakterleri güvenli şekilde base64'e çevirir */
+  const bytes = new TextEncoder().encode(str);
+  let binary  = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+
 async function ghPut(path, content, message, sha = null) {
   const { owner, repo, branch, token } = ghCfg();
   const body = {
     message,
-    content: btoa(unescape(encodeURIComponent(content))),
+    content: toBase64(content),
     branch
   };
   if (sha) body.sha = sha;
@@ -1192,7 +1200,7 @@ async function ghPut(path, content, message, sha = null) {
     body: JSON.stringify(body)
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({}));
     throw new Error(err.message || `HTTP ${res.status}`);
   }
   return res.json();
@@ -1222,7 +1230,7 @@ async function loadDashboard() {
     const file = await ghGet('posts.json');
     if (!file) return;
 
-    const posts = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g,'')))));
+    const posts = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\n/g,'')), c => c.charCodeAt(0))));
     posts.sort((a,b) => new Date(b.date) - new Date(a.date));
 
     document.getElementById('statTotal').textContent = posts.length;
@@ -1259,7 +1267,7 @@ async function loadArticlesList() {
     }
     const file = await ghGet('posts.json');
     if (!file) { el.innerHTML = '<p style="color:var(--t3)">posts.json bulunamadı.</p>'; return; }
-    const posts = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g,'')))));
+    const posts = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(file.content.replace(/\n/g,'')), c => c.charCodeAt(0))));
     posts.sort((a,b) => new Date(b.date) - new Date(a.date));
     el.innerHTML = posts.map(p => `
       <div class="article-row">
@@ -1730,7 +1738,11 @@ async function publishArticle() {
     const jsonFile = await ghGet('posts.json');
     let posts = [];
     if (jsonFile) {
-      posts = JSON.parse(decodeURIComponent(escape(atob(jsonFile.content.replace(/\n/g,'')))));
+      const raw = atob(jsonFile.content.replace(/\n/g,''));
+      const decoded = new TextDecoder().decode(
+        Uint8Array.from(raw, c => c.charCodeAt(0))
+      );
+      posts = JSON.parse(decoded);
     }
     /* Aynı slug varsa güncelle, yoksa ekle */
     const idx = posts.findIndex(p => p.url === articleUrl);
