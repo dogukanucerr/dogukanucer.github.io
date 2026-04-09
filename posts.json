@@ -1,5 +1,19 @@
 [
   {
+    "id": "deneme",
+    "title": "deneme",
+    "date": "2026-04-09",
+    "category": "Microsoft Security",
+    "url": "posts/deneme.html",
+    "excerpt": "Deneme",
+    "tags": [
+      "Deneme"
+    ],
+    "readingTime": "4",
+    "title_en": "deneme",
+    "excerpt_en": "deneme"
+  },
+  {
     "id": "sql-injection-kavrami-ve-onleme",
     "title": "SQL Injection: Temelden İleri Seviye Saldırı Analizi ve Önleme Teknikleri",
     "title_en": "SQL Injection: From Basics to Advanced Attack Analysis and Prevention",
@@ -8,7 +22,12 @@
     "url": "posts/sql-injection-kavrami-ve-onleme.html",
     "excerpt": "SQL Injection, OWASP Top 10'un zirvesindeki yerini korumaya devam ediyor. Bu yazıda klasik, blind ve time-based SQLi saldırı tiplerini gerçek payload'larla inceliyor, WAF bypass yöntemlerine değiniyor ve prepared statements ile parametrik sorguların nasıl tam koruma sağladığını detaylı olarak açıklıyoruz.",
     "excerpt_en": "SQL Injection continues to top the OWASP Top 10. In this article we analyze classic, blind and time-based SQLi attack types with real payloads, cover WAF bypass techniques, and explain how prepared statements provide complete protection.",
-    "tags": ["SQL Injection", "OWASP", "Web App Security", "Penetration Testing"],
+    "tags": [
+      "SQL Injection",
+      "OWASP",
+      "Web App Security",
+      "Penetration Testing"
+    ],
     "readingTime": "12 dk"
   },
   {
@@ -20,7 +39,13 @@
     "url": "posts/linux-privilege-escalation-teknikleri.html",
     "excerpt": "Bir sisteme düşük yetkili kullanıcı olarak erişim sağladıktan sonra ne yaparsınız? Bu yazı, CTF ve gerçek pentest senaryolarında sıkça karşılaşılan SUID bit istismarı, zayıf cron job yapılandırmaları ve yanlış sudo izinleri aracılığıyla root yetkisi elde etme yöntemlerini LinPEAS çıktıları eşliğinde ele alıyor.",
     "excerpt_en": "You've gained low-privilege access to a system — now what? This article covers SUID bit exploitation, misconfigured cron jobs and sudo permission abuse for root privilege escalation, all accompanied by real LinPEAS output.",
-    "tags": ["Linux", "Privilege Escalation", "SUID", "CTF", "Pentest"],
+    "tags": [
+      "Linux",
+      "Privilege Escalation",
+      "SUID",
+      "CTF",
+      "Pentest"
+    ],
     "readingTime": "15 dk"
   }
 ]
